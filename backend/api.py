@@ -49,3 +49,52 @@ async def upload_file(file: UploadFile = File(...)):
         # Delete temporary file
         if os.path.exists(temp_path):
             os.remove(temp_path)
+@app.post("/analyze")
+async def analyze_file(
+    file: UploadFile = File(...),
+    target_column: str = "final_score"
+):
+    # Create a temporary file
+    suffix = os.path.splitext(file.filename)[1]
+
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=suffix
+    ) as temp_file:
+
+        contents = await file.read()
+        temp_file.write(contents)
+        temp_path = temp_file.name
+
+    try:
+        # 1. Load data
+        df = load_data(temp_path)
+
+        # 2. Clean data
+        cleaned_df = clean_data(df)
+
+        # 3. Basic information
+        data_info = {
+            "original_rows": len(df),
+            "original_columns": len(df.columns),
+            "cleaned_rows": len(cleaned_df),
+            "cleaned_columns": len(cleaned_df.columns),
+            "columns": cleaned_df.columns.tolist()
+        }
+
+        # 4. Machine Learning
+        ml_result = train_regression_model(
+            cleaned_df,
+            target_column
+        )
+
+        return {
+            "filename": file.filename,
+            "data_info": data_info,
+            "machine_learning": ml_result
+        }
+
+    finally:
+        # Delete temporary file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
