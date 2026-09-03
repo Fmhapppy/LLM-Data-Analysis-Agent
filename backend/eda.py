@@ -1,61 +1,46 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 
 
-def analyze_data(df: pd.DataFrame) -> dict:
+def perform_eda(df: pd.DataFrame) -> dict:
     """
-    Perform basic exploratory data analysis.
+    Perform basic Exploratory Data Analysis (EDA).
     """
 
-    numeric_columns = df.select_dtypes(
-        include=["number"]
-    ).columns.tolist()
+    # 1. 基本统计信息
+    numeric_df = df.select_dtypes(include=["number"])
 
-    categorical_columns = df.select_dtypes(
-        include=["object", "category", "bool"]
-    ).columns.tolist()
+    statistics = {}
 
-    analysis = {
-        "shape": {
-            "rows": len(df),
-            "columns": len(df.columns)
-        },
-        "numeric_columns": numeric_columns,
-        "categorical_columns": categorical_columns,
-        "statistics": df[numeric_columns].describe().to_dict()
-        if numeric_columns else {},
+    if not numeric_df.empty:
+        statistics = numeric_df.describe().round(2).to_dict()
+
+    # 2. 缺失值统计
+    missing_values = df.isnull().sum().to_dict()
+
+    # 3. 数据类型
+    data_types = {
+        column: str(dtype)
+        for column, dtype in df.dtypes.items()
     }
 
-    return analysis
+    # 4. 相关性分析
+    correlation = {}
 
-
-def create_histograms(
-    df: pd.DataFrame,
-    output_dir: str = "outputs"
-):
-    """
-    Generate histograms for numeric columns.
-    """
-
-    import os
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    numeric_columns = df.select_dtypes(
-        include=["number"]
-    ).columns
-
-    for column in numeric_columns:
-        plt.figure(figsize=(8, 5))
-        df[column].hist()
-        plt.title(f"Distribution of {column}")
-        plt.xlabel(column)
-        plt.ylabel("Frequency")
-
-        output_path = os.path.join(
-            output_dir,
-            f"{column}_distribution.png"
+    if numeric_df.shape[1] >= 2:
+        correlation = (
+            numeric_df
+            .corr()
+            .round(3)
+            .to_dict()
         )
 
-        plt.savefig(output_path)
-        plt.close()
+    return {
+        "statistics": statistics,
+        "missing_values": missing_values,
+        "data_types": data_types,
+        "correlation": correlation
+    }
+
+
+if __name__ == "__main__":
+    print("EDA module initialized.")
