@@ -1,76 +1,134 @@
 import os
+import re
 from openai import OpenAI
 
 
+def clean_markdown(text: str) -> str:
+    """
+    清理 DeepSeek 返回结果中的 Markdown 符号，
+    保留数字编号结构，方便前端直接展示。
+    """
+
+    if not text:
+        return ""
+
+    # 处理转义字符
+    text = text.replace("\\#", "#")
+    text = text.replace("\\*", "*")
+    text = text.replace("\\`", "`")
+
+    # 删除代码块
+    text = re.sub(r"```.*?```", "", text, flags=re.S)
+
+    # 删除 Markdown 标题符号，但保留标题文字
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.M)
+
+    # 加粗
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+
+    # 下划线加粗
+    text = re.sub(r"__(.*?)__", r"\1", text)
+
+    # 行内代码
+    text = re.sub(r"`([^`]*)`", r"\1", text)
+
+    # Markdown 无序列表转换成普通项目符号
+    text = re.sub(r"^\s*[-*]\s+", "• ", text, flags=re.M)
+
+    # 清理连续空行
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    return text.strip()
+
+
 def generate_ai_analysis(
-    data_info: dict,
-    eda_result: dict,
-    machine_learning: dict
-) -> str:
+    data_info,
+    eda_result,
+    machine_learning,
+    cleaning_report=None
+):
+    """
+    使用 DeepSeek 对数据分析结果进行智能总结。
+    """
 
     api_key = os.getenv("DEEPSEEK_API_KEY")
 
     if not api_key:
-        raise ValueError("DEEPSEEK_API_KEY is not set.")
+        raise ValueError(
+            "DEEPSEEK_API_KEY is not configured."
+        )
 
     client = OpenAI(
         api_key=api_key,
         base_url="https://api.deepseek.com"
     )
 
+    cleaning_report = cleaning_report or {}
+
     prompt = f"""
-你是一名专业的数据科学分析师。
+你是一名专业的数据分析师。
 
-请根据下面提供的完整数据分析结果，生成一份专业、客观、容易理解的 AI 数据分析报告。
+请根据下面的数据分析结果，生成一份中文数据分析报告。
 
-【一、数据集基本信息】
+【数据集信息】
 {data_info}
 
-【二、探索性数据分析（EDA）】
+【数据清洗结果】
+{cleaning_report}
+
+【探索性数据分析 EDA】
 {eda_result}
 
-【三、机器学习结果】
+【机器学习结果】
 {machine_learning}
 
-请按照以下结构进行分析：
+请按照以下结构输出：
 
-## 1. 数据集概况
-介绍数据规模、字段以及数据类型。
+1. 数据集概况
+介绍数据规模、字段情况以及整体数据特征。
 
-## 2. 数据质量
-分析缺失值、重复数据以及其他值得注意的数据质量问题。
+2. 数据质量
+结合实际的数据清洗结果，说明：
+- 是否存在重复数据
+- 是否存在缺失值
+- 数据清洗进行了什么处理
+不要猜测没有提供的数据。
 
-## 3. 探索性数据分析
-重点分析：
-- 数值变量的基本统计情况
-- 各变量之间的相关性
-- 是否存在明显的数据分布问题
-- 是否存在异常现象，例如天花板效应或数据偏斜
+3. 关键发现
+根据统计结果和相关性分析，总结数据中最值得关注的规律。
 
-## 4. 机器学习结果
-解释：
-- MAE
-- RMSE
-- 特征重要性
+4. 关键影响因素
+结合机器学习模型的 feature importance，分析哪些变量对目标变量影响最大。
+必须结合实际数值进行说明。
 
-说明这些指标对模型预测效果意味着什么。
+5. 模型表现
+说明 MAE、RMSE 等模型指标，并简单解释模型表现。
 
-## 5. 关键发现
-总结从 EDA 和机器学习中发现的最重要规律。
+6. AI 建议
+根据数据分析结果给出 3-5 条具有实际意义的建议。
+建议必须基于当前数据，不要凭空编造业务背景。
 
-## 6. 实际建议
-根据数据分析结果给出 2-3 条合理建议。
+【重要输出要求】
 
-要求：
-- 使用中文
-- 不要编造数据
-- 所有数字必须来自输入数据
-- 区分“相关性”和“因果关系”，不要把相关性直接说成因果关系
-- 如果发现数据质量问题，必须指出
-- 如果发现数据分布异常，必须指出
-- 不要过度解读样本量较小的数据
-- 语言专业但容易理解
-- 控制在 800 字以内
+只输出普通中文文本。
+
+不要使用 Markdown。
+
+不要使用 #、##、### 等标题符号。
+
+不要使用 ** 加粗符号。
+
+不要使用反引号。
+
+不要生成 Markdown 表格。
+
+可以使用数字编号，例如：
+1. 数据集概况
+2. 数据质量
+
+不要在报告开头添加“以下是分析报告”等无意义的介绍。
+
+内容要专业、简洁、易读。
 """
 
     response = client.chat.completions.create(
@@ -78,7 +136,7 @@ def generate_ai_analysis(
         messages=[
             {
                 "role": "system",
-                "content": "You are a professional data science analyst."
+                "content": "你是一名专业的数据分析师，擅长将统计分析和机器学习结果转化为清晰易懂的数据洞察。"
             },
             {
                 "role": "user",
@@ -88,67 +146,6 @@ def generate_ai_analysis(
         temperature=0.3
     )
 
-    return response.choices[0].message.content
+    result = response.choices[0].message.content
 
-
-if __name__ == "__main__":
-
-    test_data_info = {
-        "original_rows": 122,
-        "original_columns": 5,
-        "cleaned_rows": 120,
-        "cleaned_columns": 5,
-        "columns": [
-            "study_hours",
-            "sleep_hours",
-            "attendance",
-            "assignment_score",
-            "final_score"
-        ]
-    }
-
-    test_eda = {
-        "missing_values": {
-            "study_hours": 0,
-            "sleep_hours": 3,
-            "attendance": 0,
-            "assignment_score": 2,
-            "final_score": 0
-        },
-        "correlation": {
-            "study_hours": {
-                "final_score": 0.684
-            },
-            "sleep_hours": {
-                "final_score": -0.118
-            },
-            "attendance": {
-                "final_score": 0.216
-            },
-            "assignment_score": {
-                "final_score": 0.2
-            }
-        }
-    }
-
-    test_machine_learning = {
-        "mae": 2.6367,
-        "rmse": 4.2828,
-        "feature_importance": {
-            "study_hours": 0.7103,
-            "sleep_hours": 0.0509,
-            "attendance": 0.1452,
-            "assignment_score": 0.0935
-        }
-    }
-
-    print("Generating AI analysis...")
-
-    result = generate_ai_analysis(
-        test_data_info,
-        test_eda,
-        test_machine_learning
-    )
-
-    print("\n===== AI Analysis Report =====\n")
-    print(result)
+    return clean_markdown(result)
