@@ -1,305 +1,200 @@
-# LLM-based Intelligent Data Analysis Agent
+# LLM Data Analysis Agent
 
-> An end-to-end AI-powered data analysis system integrating data preprocessing, exploratory data analysis, machine learning, visualization, LLM reasoning, and agent-based analysis.
+> An end-to-end AI-powered data analysis platform that combines automated data cleaning, exploratory data analysis, machine learning, visualization, and LLM-based analytical reasoning.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.12-blue" />
-  <img src="https://img.shields.io/badge/FastAPI-Backend-green" />
-  <img src="https://img.shields.io/badge/React-Frontend-61DAFB" />
-  <img src="https://img.shields.io/badge/Scikit--learn-Machine%20Learning-orange" />
-  <img src="https://img.shields.io/badge/DeepSeek-LLM-purple" />
-</p>
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-Frontend-61DAFB.svg)](https://react.dev/)
+[![Scikit-learn](https://img.shields.io/badge/scikit--learn-Machine%20Learning-orange.svg)](https://scikit-learn.org/)
+[![DeepSeek](https://img.shields.io/badge/LLM-DeepSeek-purple.svg)](https://www.deepseek.com/)
 
 ---
 
 ## Overview
 
-Traditional data analysis usually requires users to manually perform data cleaning, exploratory analysis, visualization, machine learning, and result interpretation.
+**LLM Data Analysis Agent** is an AI-assisted data analysis platform designed to automate the process from raw data to actionable insights.
 
-This project integrates these processes into a unified AI-assisted data analysis pipeline.
-
-Users can upload a CSV or Excel dataset, select a prediction target, and obtain analytical results through an interactive web dashboard.
-
-The system combines **traditional data science methods** with **LLM-based reasoning and AI agents** to transform raw datasets into structured and interpretable insights.
-
----
-
-## Key Features
-
-| Module | Function |
-|---|---|
-| 📂 Data Upload | CSV / Excel dataset upload |
-| 🧹 Data Cleaning | Missing values, duplicates, empty columns |
-| 📊 EDA | Statistics, data types, correlation analysis |
-| 🤖 Machine Learning | Random Forest regression |
-| 📈 Visualization | Correlation heatmap, feature relationships, feature importance |
-| 🧠 LLM Analysis | AI-powered interpretation of analytical results |
-| 🔍 Analysis Agent | Structured multi-dimensional analytical reasoning |
-| 📄 PDF Report | Automatic analytical report generation |
-| 💻 Web Dashboard | Interactive React-based interface |
-
----
-
-## System Architecture
+Traditional data analysis often requires users to manually perform multiple steps:
 
 ```text
-                         User
-                          │
-                          ▼
-                ┌──────────────────┐
-                │   React Dashboard │
-                └─────────┬────────┘
-                          │
-                          ▼
-                ┌──────────────────┐
-                │    FastAPI API    │
-                └─────────┬────────┘
-                          │
-                          ▼
-              ┌───────────────────────┐
-              │    Data Processing    │
-              └───────────┬───────────┘
-                          │
-            ┌─────────────┼─────────────┐
-            ▼             ▼             ▼
-      ┌──────────┐  ┌──────────┐  ┌──────────────┐
-      │ Cleaning │  │   EDA    │  │ Machine      │
-      │          │  │          │  │ Learning     │
-      │ Missing  │  │ Statistics│  │ Random Forest│
-      │ Duplicate│  │Correlation│  │ MAE / RMSE  │
-      └────┬─────┘  └────┬─────┘  └──────┬───────┘
-           │             │               │
-           └─────────────┼───────────────┘
-                         ▼
-                ┌──────────────────┐
-                │  Visualization   │
-                └─────────┬────────┘
-                          │
-                          ▼
-                ┌──────────────────┐
-                │   LLM Analysis   │
-                │    DeepSeek      │
-                └─────────┬────────┘
-                          │
-                          ▼
-                ┌──────────────────┐
-                │ Analysis Agent   │
-                └─────────┬────────┘
-                          │
-                 ┌────────┴────────┐
-                 ▼                 ▼
-          ┌──────────────┐  ┌──────────────┐
-          │ Web Dashboard│  │  PDF Report  │
-          └──────────────┘  └──────────────┘
-Data Analysis Pipeline
 Raw Dataset
-     │
-     ▼
-Data Inspection
-     │
-     ▼
+    ↓
 Data Cleaning
-     │
-     ▼
+    ↓
 Exploratory Data Analysis
-     │
-     ▼
-Machine Learning
-     │
-     ▼
+    ↓
 Visualization
-     │
-     ▼
-LLM Interpretation
-     │
-     ▼
-Agent-based Analysis
-     │
-     ▼
-Automated Report
-Data Cleaning
+    ↓
+Machine Learning
+    ↓
+Result Interpretation
+    ↓
+Analytical Report
 
-The preprocessing module automatically handles common data quality problems.
+This project integrates these steps into a unified pipeline and introduces an LLM-powered Analysis Agent that interprets statistical results, machine learning outputs, data quality information, and correlations.
 
-Current operations include:
+The goal is not to replace traditional statistical or machine learning methods, but to combine them with large language models to create a more accessible and automated data analysis workflow.
+
+Key Features
+1. Automated Data Cleaning
+
+The system automatically processes uploaded CSV/Excel datasets.
+
+Current cleaning pipeline includes:
 
 Duplicate row detection and removal
-Missing value detection
-Numerical missing values → median imputation
-Categorical missing values → mode imputation
 Completely empty column removal
-Cleaning statistics generation
-
-The system also produces a structured cleaning report describing the preprocessing process.
-
-Exploratory Data Analysis
-
-The EDA module provides:
-
-Descriptive statistics
-Mean
-Standard deviation
-Minimum / maximum
-Quartiles
-Data types
-Missing values
-Pearson correlation analysis
-
-The resulting statistics are passed to subsequent machine learning and AI analysis modules.
-
-Machine Learning
-
-The current machine learning pipeline uses:
-
-Random Forest Regression
-Numerical Features
-        │
-        ▼
-Train / Test Split
-        │
-        ▼
-Random Forest
-        │
-        ▼
-Prediction
-        │
-        ├───────────────┐
-        ▼               ▼
-      MAE             RMSE
-        │
-        ▼
-Feature Importance
-
-The model currently reports:
-
-Mean Absolute Error (MAE)
-Root Mean Squared Error (RMSE)
-Feature importance
-
-The machine learning component performs numerical computation independently from the LLM.
-
-Visualization
-
-The system automatically generates analytical visualizations including:
-
-Correlation Heatmap
-
-Shows relationships between numerical variables.
-
-Feature Relationship
-
-Visualizes the relationship between important features and the prediction target.
+Missing value detection
+Median imputation for numerical variables
+Mode imputation for categorical variables
+Cleaning statistics and processing logs
 
 Example:
 
-Study Hours → Final Score
-Feature Importance
+Original rows:       122
+Cleaned rows:        120
+Duplicate rows:        2
+Missing values:        5
+Remaining missing:    0
+2. Exploratory Data Analysis
 
-Displays the relative importance of input variables according to the Random Forest model.
+The EDA module automatically generates:
 
-LLM-based Analysis
-
-The system uses DeepSeek to interpret structured analytical results.
-
-Instead of asking the LLM to perform numerical calculations directly, the system first completes the traditional data science pipeline.
-
-Dataset
-   ↓
-Data Science Pipeline
-   ↓
-Structured Results
-   ↓
-DeepSeek
-   ↓
-Natural Language Insights
-
-The LLM receives information such as:
-
-Data cleaning results
 Descriptive statistics
-Correlations
-Model performance
-Feature importance
+Data type information
+Missing-value statistics
+Correlation matrix
+Numerical feature relationships
 
-It then generates human-readable analytical insights.
+This allows the system to identify potential patterns before machine learning is performed.
 
-Analysis Agent
+3. Machine Learning
 
-An additional analysis agent performs higher-level reasoning over the analytical results.
+The current implementation uses a Random Forest Regression model.
 
-The agent currently produces structured outputs covering:
+The pipeline automatically:
 
-Core findings
-Key factors
-Data quality
-Variable relationships
-Model evaluation
-Recommended next analysis
+Selects numerical variables
+Separates features and target
+Splits the dataset into training and testing sets
+Trains the Random Forest model
+Generates predictions
+Calculates model evaluation metrics
+Extracts feature importance
 
-Example output structure:
+Current evaluation metrics include:
 
-{
-  "core_findings": [],
-  "key_factors": [],
-  "data_quality": [],
-  "relationships": [],
-  "model_evaluation": [],
-  "next_analysis": []
-}
+MAE — Mean Absolute Error
+RMSE — Root Mean Squared Error
+Feature Importance
+4. Automated Visualization
 
-The structured output allows the frontend to independently render different analytical sections.
+The platform generates visualizations automatically using Matplotlib.
 
-Web Dashboard
+Current visualizations include:
 
-The frontend is implemented with React.
+Correlation heatmap
+Feature-target relationship plot
+Feature importance chart
 
-The dashboard provides:
+Generated visualization files are stored in:
 
-Dataset upload
-Automatic field detection
-Prediction target selection
-Analysis execution
-Data overview
-Cleaning results
-Visualizations
-Machine learning results
-AI insights
-Agent analysis
-PDF report access
-Automated PDF Report
+backend/outputs/
+5. LLM-Powered Analysis Agent
 
-After completing the analysis pipeline, the system automatically generates a PDF report containing:
+The project introduces an AI analysis layer on top of conventional data science methods.
 
-Dataset overview
+The Agent receives:
+
+Dataset structure
 Data cleaning results
 EDA statistics
-Correlation analysis
-Visualizations
+Correlation information
 Machine learning metrics
 Feature importance
-AI-generated analysis
+
+It then produces structured analytical insights.
+
+The Agent is specifically instructed to:
+
+Distinguish correlation from causation
+Interpret feature importance correctly
+Use actual MAE/RMSE values
+Identify potential data-quality issues
+Detect distribution or ceiling effects
+Combine statistical and machine-learning evidence
+Recommend appropriate next-step analyses
+
+Example reasoning:
+
+Correlation ≠ Causation
+
+A strong correlation between study_hours
+and final_score indicates statistical association.
+
+It does not prove that increasing study_hours
+directly causes higher final_score.
+System Architecture
+                    ┌─────────────────────┐
+                    │     User Dataset    │
+                    │   CSV / Excel File  │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │    Data Processor   │
+                    │ Load & Inspect Data │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │    Data Cleaner     │
+                    │ Deduplication       │
+                    │ Missing Values      │
+                    │ Empty Columns       │
+                    └──────────┬──────────┘
+                               │
+                ┌──────────────┴──────────────┐
+                ▼                             ▼
+      ┌─────────────────┐          ┌─────────────────┐
+      │       EDA       │          │ Machine Learning│
+      │ Statistics      │          │ Random Forest   │
+      │ Correlation     │          │ MAE / RMSE      │
+      └────────┬────────┘          │ Feature Import. │
+               │                   └────────┬────────┘
+               │                            │
+               └──────────────┬─────────────┘
+                              ▼
+                   ┌─────────────────────┐
+                   │    Visualization    │
+                   │ Heatmap / Plots     │
+                   └──────────┬──────────┘
+                              │
+                              ▼
+                   ┌─────────────────────┐
+                   │   Analysis Agent    │
+                   │       LLM           │
+                   │ Reasoning & Insights│
+                   └──────────┬──────────┘
+                              │
+                              ▼
+                   ┌─────────────────────┐
+                   │   Final AI Report   │
+                   │ Insights & Next Step│
+                   └─────────────────────┘
 Technology Stack
-Backend
-Python
-FastAPI
-Pandas
-NumPy
-Scikit-learn
-Matplotlib
-ReportLab
-Frontend
-React
-JavaScript
-CSS
-AI
-DeepSeek API
-Large Language Models
-AI Agent architecture
-Development
-Git
-GitHub
-REST API
-JSON
+Layer	Technology
+Programming Language	Python 3.12
+Backend	FastAPI
+Data Processing	Pandas, NumPy
+Data Analysis	Pandas
+Machine Learning	Scikit-learn
+Visualization	Matplotlib
+Frontend	React
+LLM	DeepSeek
+API Communication	OpenAI-compatible API
+Configuration	python-dotenv
+Version Control	Git / GitHub
 Project Structure
 LLM-Data-Analysis-Agent/
 │
@@ -314,30 +209,165 @@ LLM-Data-Analysis-Agent/
 │   ├── llm_analyzer.py
 │   ├── analysis_agent.py
 │   ├── pdf_report.py
+│   ├── requirements.txt
+│   ├── .env
 │   ├── uploads/
 │   └── outputs/
 │
 ├── frontend/
-│   └── src/
-│       ├── App.jsx
-│       └── App.css
+│   ├── src/
+│   │   ├── App.jsx
+│   │   └── App.css
+│   ├── package.json
+│   └── ...
 │
 ├── .gitignore
 ├── README.md
-└── requirements.txt
-Installation
+└── ...
+
+.env, uploaded datasets, generated outputs, virtual environments, and other local files are excluded from version control.
+
+Example Analysis
+
+The included demonstration dataset contains student learning-related variables:
+
+study_hours
+sleep_hours
+attendance
+assignment_score
+final_score
+
+The prediction target is:
+
+final_score
+Data Cleaning
+
+The demonstration dataset initially contained:
+
+122 rows
+5 numerical variables
+2 duplicate rows
+5 missing values
+
+After cleaning:
+
+Rows:              120
+Columns:             5
+Duplicates removed:  2
+Missing values:      5
+Remaining missing:   0
+Machine Learning Results
+
+A Random Forest regression model was trained to predict final_score.
+
+Metric	Result
+MAE	2.637
+RMSE	4.283
+
+Feature importance:
+
+Feature	Importance
+study_hours	71.0%
+attendance	14.5%
+assignment_score	9.4%
+sleep_hours	5.1%
+
+These results indicate that study_hours provided the strongest predictive signal within this particular model and dataset.
+
+Importantly, feature importance should not be interpreted as proof of causality.
+
+Statistical Findings
+
+The demonstration dataset produced the following correlations with final_score:
+
+Variable	Correlation with final_score
+study_hours	0.682
+attendance	0.203
+assignment_score	0.167
+sleep_hours	-0.123
+
+The relatively strong association between study_hours and final_score makes it an interesting variable for further analysis.
+
+However:
+
+Correlation describes statistical association and does not establish a causal relationship.
+
+The system therefore explicitly separates statistical evidence from causal claims in its AI-generated analysis.
+
+Data Quality Considerations
+
+The AI Analysis Agent also identified a potential ceiling effect in the demonstration dataset.
+
+The distribution of final_score contains a concentration of observations near the maximum score, which may limit the ability of a regression model to distinguish high-performing students.
+
+This is an important example of why model metrics should not be interpreted independently of the underlying data distribution.
+
+AI Analysis Agent
+
+The Analysis Agent combines outputs from multiple analytical components:
+
+Data Cleaning
+      +
+EDA
+      +
+Correlation Analysis
+      +
+Machine Learning
+      +
+Feature Importance
+      ↓
+   LLM Agent
+      ↓
+Structured Insights
+
+The Agent generates structured results in categories including:
+
+Core Findings
+Key Factors
+Data Quality
+Relationships
+Model Evaluation
+Next Analysis
+
+This allows the LLM to function as an analytical reasoning layer, rather than simply generating a natural-language summary of the dataset.
+
+Example Agent Output
+
+The Agent may identify findings such as:
+
+Core Finding:
+study_hours shows the strongest association with final_score.
+
+Key Factor:
+study_hours is also the most important feature in the
+Random Forest model.
+
+Model Evaluation:
+MAE = 2.6367
+RMSE = 4.2828
+
+Data Quality:
+2 duplicate records were removed and 5 missing values
+were imputed.
+
+Next Analysis:
+Use cross-validation, residual analysis, alternative
+models, and additional explanatory variables to further
+evaluate model robustness.
+Running Locally
 1. Clone the repository
 git clone https://github.com/Fmhapppy/LLM-Data-Analysis-Agent.git
 cd LLM-Data-Analysis-Agent
-2. Create a virtual environment
+2. Create a Python virtual environment
 python -m venv .venv
 
-Windows:
+Activate it on Windows:
 
 .venv\Scripts\activate
-3. Install dependencies
+3. Install backend dependencies
+cd backend
 pip install -r requirements.txt
-Configuration
+4. Configure the LLM API
 
 Create:
 
@@ -347,135 +377,226 @@ Add:
 
 DEEPSEEK_API_KEY=your_api_key_here
 
-Never commit API keys or other sensitive credentials to GitHub.
+Never commit your API key to GitHub.
 
-Running the Backend
-cd backend
+5. Start the backend
+
+From the backend directory:
+
 uvicorn api:app --reload
 
-Backend:
+The backend will normally be available at:
 
 http://127.0.0.1:8000
-Running the Frontend
+6. Start the frontend
+
+Open another terminal:
+
 cd frontend
 npm install
 npm run dev
 
-Then open the local address provided by Vite.
+Then open the local frontend URL shown by Vite.
 
-Example Dataset
+API Overview
+Health / Root
+GET /
+Inspect Dataset
+POST /inspect
 
-The system has been tested using a student learning dataset containing:
+Upload a CSV or Excel file to inspect:
 
-Study hours
-Sleep hours
-Attendance
-Assignment score
-Final score
+Column names
+Data types
+Dataset dimensions
+Basic information
+Analyze Dataset
+POST /analyze
 
-This dataset demonstrates the complete workflow from preprocessing to machine learning and AI-assisted interpretation.
+The analysis endpoint performs the complete pipeline:
 
-Engineering Principles
-1. Separation of Computation and Reasoning
+Upload
+→ Load
+→ Clean
+→ EDA
+→ Machine Learning
+→ Visualization
+→ AI Analysis
+→ Analysis Agent
+→ Report
+Design Principles
 
-Numerical computation is handled by traditional data science libraries.
+The project follows several principles when combining AI with data science.
 
-LLMs are primarily used for:
+1. Traditional analysis first, LLM reasoning second
 
-Result interpretation
-Insight generation
-Pattern summarization
-Analytical recommendations
+The LLM does not replace statistical calculations or machine learning.
 
-This separates deterministic numerical analysis from probabilistic language reasoning.
+Instead:
 
-2. Modular Architecture
+Data Science Methods
+        ↓
+Reliable Numerical Results
+        ↓
+LLM Interpretation
 
-Each major component is implemented as an independent module:
+This reduces the risk of allowing the language model to invent numerical findings.
 
-Data Processor
-      ↓
-Data Cleaner
-      ↓
-EDA
-      ↓
-Machine Learning
-      ↓
-Visualization
-      ↓
-LLM Analyzer
-      ↓
-Analysis Agent
-      ↓
-PDF Report
+2. Evidence-based AI interpretation
 
-This modular design makes individual components easier to test, replace, and extend.
+The Agent receives actual computed values such as:
 
-Current Status
+Correlation coefficients
+MAE
+RMSE
+Feature importance
+Missing values
+Dataset dimensions
 
-Functional Prototype
+The LLM is therefore expected to reason from existing analytical evidence.
 
-The complete end-to-end workflow has been implemented:
+3. Correlation is not causation
 
-Data Upload
-     ↓
-Data Cleaning
-     ↓
-EDA
-     ↓
-Machine Learning
-     ↓
-Visualization
-     ↓
-LLM Analysis
-     ↓
-Agent Analysis
-     ↓
-PDF Report
+The system explicitly avoids turning correlations or feature importance into causal claims.
 
-The project is currently being refined with improvements to analytical capabilities, user experience, documentation, and system architecture.
+For example:
 
-Future Work
+study_hours → high model importance
 
-Potential improvements include:
+does NOT automatically mean
 
-Automatic regression / classification detection
-Additional machine learning algorithms
+more study_hours → higher final_score
+
+Additional experimental or causal analysis would be required to establish such a relationship.
+
+4. Model results require context
+
+Metrics such as MAE and RMSE are interpreted together with:
+
+Dataset size
+Target distribution
+Missing values
+Feature relationships
+Potential ceiling effects
+Model limitations
+Future Improvements
+
+Several improvements are planned for future versions.
+
+Model Improvements
+K-fold cross-validation
 Hyperparameter optimization
-Automated feature engineering
+Linear Regression baseline
+Gradient Boosting
+XGBoost / LightGBM comparison
+Automated model selection
+Statistical Analysis
+Residual analysis
+Outlier detection
+Confidence intervals
 Statistical significance testing
-Advanced anomaly detection
-Natural-language dataset querying
-Multi-step autonomous analysis
-Agent-driven visualization selection
-Interactive analytical conversations
+Distribution analysis
+Multicollinearity diagnostics
+AI Agent Improvements
+Tool-calling architecture
+Multi-step reasoning workflow
+Automatic hypothesis generation
+Automated experiment planning
+Agent-driven model comparison
+More robust structured output validation
+Data Science Improvements
 Support for larger datasets
-Experiment tracking
-Project Significance
+Automatic feature engineering
+Categorical variable encoding
+Time-series analysis
+Classification tasks
+Clustering
+Anomaly detection
+Product Improvements
+Interactive visualization
+Dataset history
+Analysis session management
+Exportable analytical reports
+More flexible model configuration
+Limitations
 
-This project explores a hybrid approach to intelligent data analysis.
+This project is currently a prototype / portfolio-level AI data analysis system.
 
-Rather than replacing traditional data science methods with an LLM, the system combines:
+Important limitations include:
 
-Traditional Data Science
-          +
+Demonstration datasets are relatively small.
+Random Forest hyperparameters are not extensively optimized.
+Model performance is currently evaluated using a single train/test split.
+Causal relationships cannot be established from the current analysis pipeline.
+LLM-generated interpretations should be reviewed against the underlying numerical results.
+The current implementation primarily focuses on numerical datasets.
+
+These limitations provide clear directions for future development.
+
+Learning Outcomes
+
+Through this project, I explored the integration of:
+
+Python
+   +
+Data Processing
+   +
+Exploratory Data Analysis
+   +
 Machine Learning
-          +
-Large Language Models
-          +
+   +
+Data Visualization
+   +
+LLM APIs
+   +
 AI Agents
-          ↓
-Intelligent Data Analysis
+   +
+FastAPI
+   +
+React
 
-The project demonstrates how deterministic analytical methods can be combined with flexible language-based reasoning to build more accessible and intelligent data analysis applications.
+More importantly, the project focuses on how LLMs can work together with conventional data science methods rather than treating an LLM as a replacement for statistical or machine learning techniques.
 
+Project Motivation
+
+The motivation behind this project is to explore a practical question:
+
+How can large language models make data analysis more accessible while still preserving the reliability of traditional data science methods?
+
+The project attempts to answer this by combining deterministic data-processing and machine-learning pipelines with an LLM-based reasoning layer.
+
+The resulting workflow transforms raw data into:
+
+Raw Data
+    ↓
+Clean Data
+    ↓
+Statistical Evidence
+    ↓
+Machine Learning Results
+    ↓
+AI Reasoning
+    ↓
+Actionable Insights
 Author
 
 Fmhapppy
 
+Software Engineering Student
+
+Interested in:
+
+Artificial Intelligence
+Data Science
+Machine Learning
+LLM Applications
+AI Agents
+Software Engineering
+
 GitHub:
-https://github.com/Fmhapppy/LLM-Data-Analysis-Agent
+
+https://github.com/Fmhapppy
 
 License
 
-This project is intended for educational, research, and portfolio purposes.
+This project is intended primarily for educational, research, and portfolio purposes.
