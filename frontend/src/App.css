@@ -1,10 +1,18 @@
+/* =========================================================
+   Global
+========================================================= */
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
+
   font-family:
     Inter,
     -apple-system,
@@ -12,13 +20,25 @@ body {
     "Segoe UI",
     "Microsoft YaHei",
     sans-serif;
+
   background: #f5f7fb;
   color: #172033;
+
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
-input {
+input,
+select {
   font-family: inherit;
+}
+
+button {
+  outline: none;
+}
+
+img {
+  max-width: 100%;
 }
 
 .app {
@@ -26,18 +46,22 @@ input {
 }
 
 
-/* =========================
+/* =========================================================
    Header
-========================= */
+========================================================= */
 
 .header {
   max-width: 1180px;
+
   margin: 0 auto;
+
   padding: 48px 24px 32px;
 
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+
+  gap: 24px;
 }
 
 .header h1 {
@@ -45,36 +69,51 @@ input {
 
   font-size: 32px;
   font-weight: 750;
+
   letter-spacing: -0.8px;
+
+  color: #172033;
 }
 
 .header p {
   margin: 10px 0 0;
 
   color: #687386;
+
   font-size: 15px;
+
+  line-height: 1.6;
 }
 
 .status {
   display: flex;
   align-items: center;
+
   gap: 8px;
 
   padding: 8px 14px;
 
   background: #ffffff;
+
   border: 1px solid #e6e9ef;
+
   border-radius: 999px;
 
   color: #536071;
+
   font-size: 13px;
+
+  white-space: nowrap;
 }
 
 .status-dot {
   width: 8px;
   height: 8px;
 
+  flex: 0 0 auto;
+
   border-radius: 50%;
+
   background: #35b36b;
 
   box-shadow:
@@ -82,29 +121,35 @@ input {
 }
 
 
-/* =========================
+/* =========================================================
    Common Card
-========================= */
+========================================================= */
 
 .upload-card,
 .result-section,
 .loading-card {
   max-width: 1180px;
+
   margin: 0 auto 24px;
 
   background: #ffffff;
 
   border: 1px solid #e7eaf0;
+
   border-radius: 18px;
 
   box-shadow:
     0 8px 30px rgba(25, 35, 55, 0.04);
 }
 
+.result-section {
+  overflow: hidden;
+}
 
-/* =========================
+
+/* =========================================================
    Upload
-========================= */
+========================================================= */
 
 .upload-card {
   padding: 30px;
@@ -113,20 +158,24 @@ input {
 .section-title {
   display: flex;
   align-items: flex-start;
+
   gap: 14px;
 
   margin-bottom: 24px;
 }
 
 .section-title > span {
+  width: 42px;
+  height: 42px;
+
+  flex: 0 0 auto;
+
   display: flex;
   align-items: center;
   justify-content: center;
 
-  width: 42px;
-  height: 42px;
-
   background: #f0f4ff;
+
   border-radius: 12px;
 
   font-size: 20px;
@@ -136,32 +185,40 @@ input {
   margin: 0;
 
   font-size: 20px;
+
   font-weight: 700;
+
+  color: #202a3b;
 }
 
 .section-title p {
   margin: 5px 0 0;
 
   color: #7b8494;
+
   font-size: 13px;
+
+  line-height: 1.6;
 }
 
 
-/* =========================
+/* =========================================================
    Upload Box
-========================= */
+========================================================= */
 
 .upload-box {
   position: relative;
 
   display: flex;
   flex-direction: column;
+
   align-items: center;
   justify-content: center;
 
   min-height: 190px;
 
   border: 1.5px dashed #cbd2df;
+
   border-radius: 15px;
 
   background: #fafbfe;
@@ -169,13 +226,17 @@ input {
   cursor: pointer;
 
   transition:
-    border-color 0.2s,
-    background 0.2s;
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .upload-box:hover {
   border-color: #7d8cf5;
+
   background: #f7f8ff;
+
+  transform: translateY(-1px);
 }
 
 .upload-box input {
@@ -183,6 +244,8 @@ input {
 
   width: 100%;
   height: 100%;
+
+  inset: 0;
 
   opacity: 0;
 
@@ -200,33 +263,141 @@ input {
   margin-bottom: 12px;
 
   background: #eef1ff;
+
   border-radius: 14px;
 
   color: #5968d9;
+
   font-size: 25px;
+
   font-weight: 700;
 }
 
 .upload-text {
+  max-width: 80%;
+
+  overflow: hidden;
+
   font-size: 16px;
+
   font-weight: 600;
+
+  text-align: center;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
 }
 
 .upload-hint {
   margin-top: 6px;
 
   color: #9aa2b1;
+
   font-size: 12px;
 }
 
 
-/* =========================
-   Options
-========================= */
+/* =========================================================
+   Field Detection
+========================================================= */
+
+.field-detection {
+  margin-top: 16px;
+
+  padding: 16px 18px;
+
+  background: #f8f9fc;
+
+  border: 1px solid #e7eaf0;
+
+  border-radius: 12px;
+}
+
+.field-detection-title {
+  color: #30394a;
+
+  font-size: 13px;
+
+  font-weight: 650;
+}
+
+.field-detection-info {
+  display: flex;
+  align-items: center;
+
+  gap: 18px;
+
+  margin-top: 8px;
+
+  color: #7b8494;
+
+  font-size: 12px;
+}
+
+.field-detection .tags {
+  margin-top: 12px;
+}
+
+.field-detection .tag {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 6px 10px;
+
+  background: #f0f2f8;
+
+  border: 1px solid transparent;
+
+  border-radius: 7px;
+
+  color: #5d6676;
+
+  font-size: 12px;
+}
+
+.field-detection .tag-numeric {
+  background: #eef1ff;
+
+  border-color: #dfe4ff;
+
+  color: #5968d9;
+}
+
+
+/* =========================================================
+   Field Loading
+========================================================= */
+
+.field-loading {
+  width: 100%;
+  height: 46px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 14px;
+
+  background: #f8f9fc;
+
+  border: 1px solid #e2e5ec;
+
+  border-radius: 10px;
+
+  color: #7b8494;
+
+  font-size: 14px;
+}
+
+
+/* =========================================================
+   Analysis Options
+========================================================= */
 
 .analysis-options {
   display: flex;
   align-items: flex-end;
+
   gap: 18px;
 
   margin-top: 20px;
@@ -242,29 +413,54 @@ input {
   margin-bottom: 8px;
 
   color: #596273;
+
   font-size: 13px;
+
   font-weight: 600;
 }
 
-.option input {
+.option input,
+.option select {
   width: 100%;
-
   height: 46px;
 
   padding: 0 14px;
 
   border: 1px solid #dfe3ea;
+
   border-radius: 10px;
 
   outline: none;
 
+  background: #ffffff;
+
+  color: #172033;
+
   font-size: 14px;
 
-  transition: border-color 0.2s;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.option input:focus {
+.option input:focus,
+.option select:focus {
   border-color: #7886ee;
+
+  box-shadow:
+    0 0 0 3px rgba(120, 134, 238, 0.08);
+}
+
+.option select {
+  cursor: pointer;
+}
+
+.option select:disabled {
+  background: #f5f6f9;
+
+  color: #9aa2b1;
+
+  cursor: not-allowed;
 }
 
 .analyze-button {
@@ -273,6 +469,7 @@ input {
   padding: 0 28px;
 
   border: none;
+
   border-radius: 10px;
 
   background: #5968d9;
@@ -280,14 +477,15 @@ input {
   color: #ffffff;
 
   font-size: 14px;
+
   font-weight: 650;
 
   cursor: pointer;
 
   transition:
-    transform 0.15s,
-    opacity 0.2s,
-    box-shadow 0.2s;
+    transform 0.15s ease,
+    opacity 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .analyze-button:hover {
@@ -297,18 +495,24 @@ input {
     0 6px 16px rgba(89, 104, 217, 0.22);
 }
 
+.analyze-button:active {
+  transform: translateY(0);
+}
+
 .analyze-button:disabled {
   opacity: 0.55;
+
   cursor: not-allowed;
+
   transform: none;
 
   box-shadow: none;
 }
 
 
-/* =========================
+/* =========================================================
    Error
-========================= */
+========================================================= */
 
 .error {
   margin-top: 16px;
@@ -319,15 +523,19 @@ input {
 
   background: #fff3f3;
 
+  border: 1px solid #ffdede;
+
   color: #d74b4b;
 
   font-size: 13px;
+
+  line-height: 1.6;
 }
 
 
-/* =========================
+/* =========================================================
    Loading
-========================= */
+========================================================= */
 
 .loading-card {
   padding: 50px;
@@ -342,6 +550,7 @@ input {
   margin: 0 auto 18px;
 
   border: 3px solid #e6e9f5;
+
   border-top-color: #5968d9;
 
   border-radius: 50%;
@@ -359,6 +568,8 @@ input {
   margin: 0;
 
   font-size: 17px;
+
+  color: #202a3b;
 }
 
 .loading-card p {
@@ -367,12 +578,14 @@ input {
   color: #7b8494;
 
   font-size: 13px;
+
+  line-height: 1.6;
 }
 
 
-/* =========================
+/* =========================================================
    Results
-========================= */
+========================================================= */
 
 .results {
   padding-bottom: 20px;
@@ -383,9 +596,240 @@ input {
 }
 
 
-/* =========================
+/* =========================================================
+   PDF Report
+========================================================= */
+
+.pdf-section {
+  background:
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      #fafbff 100%
+    );
+}
+
+.pdf-report-box {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 24px;
+
+  padding: 22px;
+
+  background: #ffffff;
+
+  border: 1px solid #e5e8f0;
+
+  border-radius: 14px;
+}
+
+.pdf-report-info {
+  display: flex;
+
+  align-items: center;
+
+  gap: 14px;
+
+  min-width: 0;
+}
+
+.pdf-report-icon {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #fff1f1;
+
+  border-radius: 12px;
+
+  font-size: 23px;
+}
+
+.pdf-report-info h2 {
+  margin: 0;
+
+  color: #202a3b;
+
+  font-size: 17px;
+
+  font-weight: 700;
+}
+
+.pdf-report-info p {
+  margin: 5px 0 0;
+
+  color: #7b8494;
+
+  font-size: 12px;
+
+  line-height: 1.6;
+}
+
+.pdf-report-info small {
+  display: block;
+
+  max-width: 500px;
+
+  margin-top: 5px;
+
+  overflow: hidden;
+
+  color: #a0a7b4;
+
+  font-size: 11px;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.pdf-download-button {
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  min-height: 42px;
+
+  flex: 0 0 auto;
+
+  padding: 0 18px;
+
+  border: none;
+
+  border-radius: 10px;
+
+  background: #5968d9;
+
+  color: #ffffff;
+
+  font-size: 13px;
+
+  font-weight: 650;
+
+  text-decoration: none;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.pdf-download-button:hover {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 6px 16px rgba(89, 104, 217, 0.22);
+}
+
+.pdf-download-button:active {
+  transform: translateY(0);
+}
+
+.pdf-download-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+
+  box-shadow: none;
+}
+
+
+/* =========================================================
+   Compatibility PDF styles
+========================================================= */
+
+.pdf-download-area {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 18px;
+
+  max-width: 1180px;
+
+  margin: 0 auto 24px;
+
+  padding: 18px 22px;
+
+  background: #ffffff;
+
+  border: 1px solid #e7eaf0;
+
+  border-radius: 16px;
+
+  box-shadow:
+    0 8px 30px rgba(25, 35, 55, 0.04);
+}
+
+.pdf-download-info {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+.pdf-download-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  background: #fff1f1;
+
+  border-radius: 11px;
+
+  color: #d94d4d;
+
+  font-size: 20px;
+}
+
+.pdf-download-text strong {
+  display: block;
+
+  color: #202a3b;
+
+  font-size: 14px;
+
+  font-weight: 700;
+}
+
+.pdf-download-text span {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #8a93a2;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
    Stats
-========================= */
+========================================================= */
 
 .stats-grid {
   display: grid;
@@ -406,8 +850,8 @@ input {
   border-radius: 14px;
 
   transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
@@ -430,9 +874,13 @@ input {
 
   margin-top: 9px;
 
+  color: #202a3b;
+
   font-size: 28px;
 
   font-weight: 750;
+
+  line-height: 1.2;
 }
 
 .stat-card small {
@@ -444,9 +892,9 @@ input {
 }
 
 
-/* =========================
+/* =========================================================
    Columns
-========================= */
+========================================================= */
 
 .columns-box {
   margin-top: 20px;
@@ -454,15 +902,19 @@ input {
   padding: 18px;
 
   border: 1px solid #eceef3;
+
   border-radius: 14px;
 }
 
 .columns-box strong {
+  color: #30394a;
+
   font-size: 13px;
 }
 
 .tags {
   display: flex;
+
   flex-wrap: wrap;
 
   gap: 8px;
@@ -483,9 +935,9 @@ input {
 }
 
 
-/* =========================
+/* =========================================================
    Data Cleaning
-========================= */
+========================================================= */
 
 .cleaning-summary {
   display: grid;
@@ -521,7 +973,11 @@ input {
 
   margin-top: 8px;
 
+  color: #202a3b;
+
   font-size: 25px;
+
+  line-height: 1.2;
 }
 
 .cleaning-card small {
@@ -536,6 +992,7 @@ input {
 
 .cleaning-pipeline {
   display: flex;
+
   flex-direction: column;
 
   gap: 8px;
@@ -551,6 +1008,7 @@ input {
 
 .pipeline-step {
   display: flex;
+
   align-items: center;
 
   gap: 14px;
@@ -559,12 +1017,13 @@ input {
 }
 
 .pipeline-icon {
-  flex: 0 0 auto;
-
   width: 34px;
   height: 34px;
 
+  flex: 0 0 auto;
+
   display: flex;
+
   align-items: center;
   justify-content: center;
 
@@ -575,10 +1034,13 @@ input {
   color: #5968d9;
 
   font-size: 13px;
+
   font-weight: 700;
 }
 
 .pipeline-step strong {
+  color: #30394a;
+
   font-size: 14px;
 }
 
@@ -588,6 +1050,8 @@ input {
   color: #7b8494;
 
   font-size: 12px;
+
+  line-height: 1.6;
 }
 
 .pipeline-arrow {
@@ -615,6 +1079,8 @@ input {
 }
 
 .cleaning-details strong {
+  color: #30394a;
+
   font-size: 13px;
 }
 
@@ -631,9 +1097,9 @@ input {
 }
 
 
-/* =========================
+/* =========================================================
    Charts
-========================= */
+========================================================= */
 
 .charts {
   display: grid;
@@ -659,7 +1125,11 @@ input {
 
   padding: 16px 18px;
 
+  color: #30394a;
+
   font-size: 14px;
+
+  font-weight: 700;
 
   border-bottom: 1px solid #edf0f4;
 }
@@ -679,9 +1149,9 @@ input {
 }
 
 
-/* =========================
+/* =========================================================
    Machine Learning
-========================= */
+========================================================= */
 
 .model-result {
   display: grid;
@@ -699,6 +1169,8 @@ input {
 
   background: #f8f9fc;
 
+  border: 1px solid #eceef3;
+
   border-radius: 14px;
 }
 
@@ -715,22 +1187,29 @@ input {
 
   margin-top: 8px;
 
+  color: #202a3b;
+
   font-size: 28px;
 }
 
 
-/* =========================
+/* =========================================================
    Feature Importance
-========================= */
+========================================================= */
 
 .result-section h3 {
+  margin-top: 0;
+
   margin-bottom: 18px;
+
+  color: #30394a;
 
   font-size: 15px;
 }
 
 .importance-list {
   display: flex;
+
   flex-direction: column;
 
   gap: 14px;
@@ -755,6 +1234,7 @@ input {
   font-size: 13px;
 
   text-overflow: ellipsis;
+
   white-space: nowrap;
 }
 
@@ -789,12 +1269,19 @@ input {
 }
 
 
-/* =========================
+/* =========================================================
    AI Insights
-========================= */
+========================================================= */
 
 .insights-section {
   position: relative;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fcfcff 100%
+    );
 }
 
 .insights-grid {
@@ -816,8 +1303,8 @@ input {
   border-radius: 14px;
 
   transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .insight-card:hover {
@@ -829,6 +1316,7 @@ input {
 
 .insight-card-header {
   display: flex;
+
   align-items: center;
 
   gap: 10px;
@@ -840,7 +1328,10 @@ input {
   width: 34px;
   height: 34px;
 
+  flex: 0 0 auto;
+
   display: flex;
+
   align-items: center;
   justify-content: center;
 
@@ -854,12 +1345,16 @@ input {
 .insight-card-header h3 {
   margin: 0;
 
+  color: #30394a;
+
   font-size: 15px;
+
   font-weight: 700;
 }
 
 .insight-list {
   display: flex;
+
   flex-direction: column;
 
   gap: 12px;
@@ -867,6 +1362,7 @@ input {
 
 .insight-item {
   display: flex;
+
   align-items: flex-start;
 
   gap: 9px;
@@ -874,6 +1370,8 @@ input {
 
 .insight-item > span {
   margin-top: 2px;
+
+  flex: 0 0 auto;
 
   color: #5968d9;
 
@@ -892,6 +1390,7 @@ input {
 
 .insight-factors {
   display: flex;
+
   flex-direction: column;
 
   gap: 10px;
@@ -899,8 +1398,12 @@ input {
 
 .factor-item {
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
+
+  gap: 12px;
 
   padding: 11px 12px;
 
@@ -912,21 +1415,205 @@ input {
 }
 
 .factor-item span {
+  overflow: hidden;
+
   color: #596273;
 
   font-size: 13px;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
 }
 
 .factor-item strong {
+  flex: 0 0 auto;
+
   color: #5968d9;
 
   font-size: 13px;
 }
 
 
-/* =========================
+/* =========================================================
+   NEW — AI Agent
+   给 Analysis Agent 后续接入预留
+========================================================= */
+
+.agent-section {
+  position: relative;
+
+  background:
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      #f9faff 100%
+    );
+}
+
+.agent-report {
+  padding: 24px;
+
+  background: #fafbff;
+
+  border: 1px solid #e4e8f5;
+
+  border-radius: 15px;
+}
+
+.agent-header {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 16px;
+
+  margin-bottom: 20px;
+}
+
+.agent-title {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+.agent-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  background: #eef1ff;
+
+  border-radius: 12px;
+
+  font-size: 20px;
+}
+
+.agent-title h3 {
+  margin: 0;
+
+  color: #202a3b;
+
+  font-size: 17px;
+}
+
+.agent-title p {
+  margin: 4px 0 0;
+
+  color: #8a93a2;
+
+  font-size: 12px;
+}
+
+.agent-status {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 6px 10px;
+
+  background: #eaf8f0;
+
+  border-radius: 999px;
+
+  color: #35a967;
+
+  font-size: 11px;
+
+  font-weight: 650;
+}
+
+.agent-status-dot {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: #35a967;
+}
+
+.agent-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap: 14px;
+}
+
+.agent-card {
+  padding: 18px;
+
+  background: #ffffff;
+
+  border: 1px solid #e8ebf2;
+
+  border-radius: 12px;
+}
+
+.agent-card h4 {
+  margin: 0 0 10px;
+
+  color: #30394a;
+
+  font-size: 14px;
+}
+
+.agent-card p {
+  margin: 0;
+
+  color: #626c7d;
+
+  font-size: 13px;
+
+  line-height: 1.8;
+}
+
+.agent-card ul {
+  margin: 0;
+
+  padding-left: 20px;
+
+  color: #626c7d;
+
+  font-size: 13px;
+
+  line-height: 1.8;
+}
+
+.agent-card li {
+  margin: 4px 0;
+}
+
+.agent-highlight {
+  grid-column: 1 / -1;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f8f9ff 0%,
+      #ffffff 100%
+    );
+}
+
+.agent-highlight strong {
+  color: #5968d9;
+}
+
+
+/* =========================================================
    AI Report
-========================= */
+========================================================= */
 
 .ai-section {
   margin-bottom: 40px;
@@ -949,7 +1636,9 @@ input {
 }
 
 
-/* AI Report Main Title */
+/* =========================================================
+   AI Report Main Title
+========================================================= */
 
 .ai-report-main-title {
   margin: 0 0 24px;
@@ -964,10 +1653,13 @@ input {
 }
 
 
-/* AI Report Section Title */
+/* =========================================================
+   AI Report Section Title
+========================================================= */
 
 .ai-report-title {
   display: flex;
+
   align-items: center;
 
   gap: 10px;
@@ -992,15 +1684,18 @@ input {
 }
 
 
-/* Section Number */
+/* =========================================================
+   Section Number
+========================================================= */
 
 .ai-report-number {
-  flex: 0 0 auto;
-
   width: 28px;
   height: 28px;
 
+  flex: 0 0 auto;
+
   display: inline-flex;
+
   align-items: center;
   justify-content: center;
 
@@ -1016,7 +1711,9 @@ input {
 }
 
 
-/* Smaller Subtitle */
+/* =========================================================
+   Smaller Subtitle
+========================================================= */
 
 .ai-report-subtitle {
   margin: 20px 0 8px;
@@ -1029,7 +1726,9 @@ input {
 }
 
 
-/* Paragraph */
+/* =========================================================
+   Paragraph
+========================================================= */
 
 .ai-report-paragraph {
   margin: 9px 0;
@@ -1042,7 +1741,9 @@ input {
 }
 
 
-/* Lists */
+/* =========================================================
+   Lists
+========================================================= */
 
 .ai-report-list {
   margin: 10px 0 16px;
@@ -1063,7 +1764,9 @@ input {
 }
 
 
-/* Inline Code / Field */
+/* =========================================================
+   Inline Code
+========================================================= */
 
 .ai-code {
   display: inline-block;
@@ -1088,7 +1791,9 @@ input {
 }
 
 
-/* Empty Report */
+/* =========================================================
+   Empty Report
+========================================================= */
 
 .ai-empty {
   margin: 0;
@@ -1099,9 +1804,9 @@ input {
 }
 
 
-/* =========================
+/* =========================================================
    Footer
-========================= */
+========================================================= */
 
 footer {
   padding: 20px;
@@ -1110,16 +1815,17 @@ footer {
 
   font-size: 12px;
 
+  line-height: 1.6;
+
   text-align: center;
 }
 
 
-/* =========================
-   Responsive
-========================= */
+/* =========================================================
+   Responsive — 900px
+========================================================= */
 
 @media (max-width: 900px) {
-
   .stats-grid {
     grid-template-columns:
       repeat(2, 1fr);
@@ -1134,15 +1840,35 @@ footer {
     grid-template-columns: 1fr;
   }
 
+  .agent-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-highlight {
+    grid-column: auto;
+  }
+
+  .pdf-download-area {
+    margin-left: 12px;
+
+    margin-right: 12px;
+  }
 }
 
 
-@media (max-width: 800px) {
+/* =========================================================
+   Responsive — 800px
+========================================================= */
 
+@media (max-width: 800px) {
   .header {
     flex-direction: column;
 
     gap: 20px;
+  }
+
+  .status {
+    align-self: flex-start;
   }
 
   .charts {
@@ -1168,11 +1894,39 @@ footer {
       100px 1fr 60px;
   }
 
+  .pdf-download-area {
+    flex-direction: column;
+
+    align-items: stretch;
+  }
+
+  .pdf-download-button {
+    width: 100%;
+  }
+
+  .pdf-report-box {
+    flex-direction: column;
+
+    align-items: stretch;
+  }
+
+  .pdf-download-button {
+    width: 100%;
+  }
+
+  .agent-header {
+    align-items: flex-start;
+
+    flex-direction: column;
+  }
 }
 
 
-@media (max-width: 600px) {
+/* =========================================================
+   Responsive — 600px
+========================================================= */
 
+@media (max-width: 600px) {
   .cleaning-summary {
     grid-template-columns: 1fr;
   }
@@ -1185,6 +1939,14 @@ footer {
     padding: 8px;
   }
 
+  .field-detection-info {
+    flex-direction: column;
+
+    align-items: flex-start;
+
+    gap: 5px;
+  }
+
   .ai-report {
     padding: 20px 18px;
   }
@@ -1193,18 +1955,45 @@ footer {
     font-size: 16px;
   }
 
+  .pdf-download-area {
+    padding: 16px;
+  }
+
+  .pdf-download-info {
+    align-items: flex-start;
+  }
+
+  .agent-report {
+    padding: 16px;
+  }
+
+  .agent-card {
+    padding: 16px;
+  }
 }
 
 
-@media (max-width: 500px) {
+/* =========================================================
+   Responsive — 500px
+========================================================= */
 
+@media (max-width: 500px) {
   .header {
     padding: 30px 16px 20px;
+  }
+
+  .header h1 {
+    font-size: 25px;
+  }
+
+  .header p {
+    font-size: 13px;
   }
 
   .upload-card,
   .result-section {
     margin-left: 12px;
+
     margin-right: 12px;
 
     padding: 20px;
@@ -1221,6 +2010,8 @@ footer {
   .importance-item {
     grid-template-columns:
       90px 1fr 55px;
+
+    gap: 8px;
   }
 
   .ai-report {
@@ -1234,5 +2025,29 @@ footer {
     font-size: 13px;
   }
 
-}
+  .pdf-download-area {
+    margin-left: 12px;
 
+    margin-right: 12px;
+  }
+
+  .pdf-download-text strong {
+    font-size: 13px;
+  }
+
+  .pdf-report-box {
+    padding: 16px;
+  }
+
+  .pdf-report-info {
+    align-items: flex-start;
+  }
+
+  .agent-title h3 {
+    font-size: 15px;
+  }
+
+  .agent-title p {
+    font-size: 11px;
+  }
+}

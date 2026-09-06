@@ -1,8 +1,15 @@
 import os
 import shutil
-from pathlib import Path
+from datetime import datetime
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import (
+    FastAPI,
+    File,
+    Form,
+    UploadFile,
+    HTTPException,
+)
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -12,317 +19,947 @@ from eda import perform_eda
 from ml_model import train_regression_model
 from visualizations import generate_visualizations
 from llm_analyzer import generate_ai_analysis
+from analysis_agent import create_analysis_agent
+from pdf_report import generate_pdf_report
 
 
-# =========================
-# 基础配置
-# =========================
-
-BASE_DIR = Path(__file__).resolve().parent
-UPLOAD_DIR = BASE_DIR / "uploads"
-OUTPUT_DIR = BASE_DIR / "outputs"
-
-UPLOAD_DIR.mkdir(exist_ok=True)
-OUTPUT_DIR.mkdir(exist_ok=True)
-
-
-# =========================
+# =========================================================
 # FastAPI
-# =========================
+# =========================================================
 
 app = FastAPI(
     title="LLM Data Analysis Agent",
-    description="AI-powered data analysis and visualization system",
-    version="1.0.0"
+    description="AI-powered Data Science Platform",
+    version="1.0.0",
 )
 
 
-# =========================
+# =========================================================
 # CORS
-# =========================
+# =========================================================
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# =========================
-# 静态文件
-# =========================
+# =========================================================
+# Directories
+# =========================================================
 
-app.mount(
-    "/outputs",
-    StaticFiles(directory=str(OUTPUT_DIR)),
-    name="outputs"
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+UPLOAD_DIR = os.path.join(
+    BASE_DIR,
+    "uploads",
+)
+
+OUTPUT_DIR = os.path.join(
+    BASE_DIR,
+    "outputs",
 )
 
 
-# =========================
-# 根路径
-# =========================
+os.makedirs(
+    UPLOAD_DIR,
+    exist_ok=True,
+)
+
+os.makedirs(
+    OUTPUT_DIR,
+    exist_ok=True,
+)
+
+
+# =========================================================
+# Static files
+# =========================================================
+
+app.mount(
+    "/outputs",
+    StaticFiles(
+        directory=OUTPUT_DIR
+    ),
+    name="outputs",
+)
+
+
+# =========================================================
+# Health Check
+# =========================================================
 
 @app.get("/")
 def root():
+
     return {
-        "message": "LLM Data Analysis Agent API is running.",
-        "version": "1.0.0"
+        "success": True,
+        "message": (
+            "LLM Data Analysis Agent API "
+            "is running."
+        ),
     }
 
 
-# =========================
-# 上传文件
-# =========================
+# =========================================================
+# 自动识别字段
+# =========================================================
 
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    """
-    上传 CSV / Excel 数据文件
-    """
-
-    allowed_extensions = {
-        ".csv",
-        ".xlsx",
-        ".xls"
-    }
-
-    file_extension = Path(file.filename).suffix.lower()
-
-    if file_extension not in allowed_extensions:
-        raise HTTPException(
-            status_code=400,
-            detail="只支持 CSV、XLSX、XLS 文件。"
-        )
-
-    file_path = UPLOAD_DIR / file.filename
-
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        return {
-            "success": True,
-            "filename": file.filename,
-            "file_path": str(file_path)
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"文件上传失败：{str(e)}"
-        )
-
-
-# =========================
-# 数据分析
-# =========================
-
-@app.post("/analyze")
-async def analyze_file(
-    file: UploadFile = File(...),
-    target_column: str = "final_score"
+@app.post("/inspect")
+async def inspect_file(
+    file: UploadFile = File(...)
 ):
     """
-    完整数据分析流程：
-
-    1. 保存数据
-    2. 加载数据
-    3. 数据清洗
-    4. EDA
-    5. 机器学习
-    6. 生成可视化
-    7. DeepSeek AI 分析
-    8. 返回完整分析结果
+    上传数据文件后，仅进行字段识别。
+    不进行完整的数据分析。
     """
 
-    allowed_extensions = {
-        ".csv",
-        ".xlsx",
-        ".xls"
-    }
+    filename = file.filename or ""
 
-    file_extension = Path(file.filename).suffix.lower()
+    # -----------------------------------------------------
+    # 检查文件格式
+    # -----------------------------------------------------
 
-    if file_extension not in allowed_extensions:
+    if not filename.lower().endswith(
+        (
+            ".csv",
+            ".xlsx",
+            ".xls",
+        )
+    ):
         raise HTTPException(
             status_code=400,
-            detail="只支持 CSV、XLSX、XLS 文件。"
+            detail=(
+                "仅支持 CSV、XLSX、XLS 文件"
+            ),
         )
 
-    # =========================
-    # 1. 保存上传文件
-    # =========================
-
-    file_path = UPLOAD_DIR / file.filename
-
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"文件保存失败：{str(e)}"
-        )
+    file_path = os.path.join(
+        UPLOAD_DIR,
+        filename,
+    )
 
     try:
 
-        # =========================
-        # 2. 加载数据
-        # =========================
+        # -------------------------------------------------
+        # 保存文件
+        # -------------------------------------------------
 
-        df = load_data(str(file_path))
+        with open(
+            file_path,
+            "wb",
+        ) as buffer:
 
-        if df.empty:
-            raise ValueError("上传的数据集为空。")
-
-        original_shape = df.shape
-
-        # =========================
-        # 3. 数据清洗
-        # =========================
-
-        cleaned_df, cleaning_report = clean_data(
-            df,
-            return_report=True
-        )
-
-        if cleaned_df.empty:
-            raise ValueError("数据清洗后没有剩余有效数据。")
-
-        cleaned_shape = cleaned_df.shape
-
-        # =========================
-        # 4. EDA
-        # =========================
-
-        eda_result = perform_eda(cleaned_df)
-
-        # =========================
-        # 5. 机器学习
-        # =========================
-
-        ml_result = train_regression_model(
-            cleaned_df,
-            target_column
-        )
-
-        # =========================
-        # 6. 数据集基本信息
-        # =========================
-
-        data_info = {
-            "filename": file.filename,
-
-            "original_rows": int(original_shape[0]),
-            "original_columns": int(original_shape[1]),
-
-            "cleaned_rows": int(cleaned_shape[0]),
-            "cleaned_columns": int(cleaned_shape[1]),
-
-            "columns": list(cleaned_df.columns),
-
-            "target_column": target_column,
-
-            "data_types": {
-                column: str(dtype)
-                for column, dtype in cleaned_df.dtypes.items()
-            }
-        }
-
-        # =========================
-        # 7. 生成可视化
-        # =========================
-
-        visualization_result = generate_visualizations(
-            cleaned_df,
-            ml_result,
-            output_dir=str(OUTPUT_DIR)
-        )
-
-        # =========================
-        # 8. 转换图片路径
-        # =========================
-
-        visualization_urls = {}
-
-        for key, path in visualization_result.items():
-
-            filename = Path(path).name
-
-            visualization_urls[key] = (
-                f"/outputs/{filename}"
+            shutil.copyfileobj(
+                file.file,
+                buffer,
             )
 
-        # =========================
-        # 9. DeepSeek AI 分析
-        # =========================
+        # -------------------------------------------------
+        # 读取数据
+        # -------------------------------------------------
 
-        ai_analysis = generate_ai_analysis(
-            data_info,
-            eda_result,
-            ml_result,
-            cleaning_report
+        df = load_data(
+            file_path
         )
 
-        # =========================
-        # 10. 返回结果
-        # =========================
+        # -------------------------------------------------
+        # 获取字段
+        # -------------------------------------------------
+
+        columns = (
+            df.columns.tolist()
+        )
+
+        numeric_columns = (
+            df.select_dtypes(
+                include=["number"]
+            )
+            .columns
+            .tolist()
+        )
+
+        categorical_columns = (
+            df.select_dtypes(
+                exclude=["number"]
+            )
+            .columns
+            .tolist()
+        )
+
+        # -------------------------------------------------
+        # 自动推荐预测目标
+        # -------------------------------------------------
+
+        recommended_target = None
+
+        target_keywords = [
+            "target",
+            "label",
+            "score",
+            "result",
+            "outcome",
+            "final",
+            "price",
+            "sales",
+            "revenue",
+            "y",
+        ]
+
+        # -------------------------------------------------
+        # 优先匹配常见目标字段
+        # -------------------------------------------------
+
+        for column in numeric_columns:
+
+            column_lower = (
+                column.lower()
+            )
+
+            if any(
+                keyword in column_lower
+                for keyword in target_keywords
+            ):
+
+                recommended_target = (
+                    column
+                )
+
+                break
+
+        # -------------------------------------------------
+        # 如果没有匹配
+        # 使用最后一个数值字段
+        # -------------------------------------------------
+
+        if (
+            recommended_target is None
+            and numeric_columns
+        ):
+
+            recommended_target = (
+                numeric_columns[-1]
+            )
 
         return {
+
             "success": True,
 
-            "filename": file.filename,
+            "filename": filename,
 
-            "data_shape": {
-                "original": list(original_shape),
-                "cleaned": list(cleaned_shape)
-            },
+            "rows": int(
+                len(df)
+            ),
 
-            "columns": list(cleaned_df.columns),
+            "columns": columns,
 
-            "target_column": target_column,
+            "numeric_columns": (
+                numeric_columns
+            ),
 
-            "cleaning_report": cleaning_report,
+            "categorical_columns": (
+                categorical_columns
+            ),
 
-            "eda": eda_result,
-
-            "machine_learning": ml_result,
-
-            "visualizations": visualization_urls,
-
-            "ai_analysis": ai_analysis
+            "recommended_target": (
+                recommended_target
+            ),
         }
 
-    except ValueError as e:
-
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
+    except HTTPException:
+        raise
 
     except Exception as e:
 
+        import traceback
+
+        traceback.print_exc()
+
         raise HTTPException(
             status_code=500,
-            detail=f"数据分析失败：{str(e)}"
+            detail=str(e),
         )
 
 
-# =========================
-# 本地运行
-# =========================
+# =========================================================
+# 完整数据分析
+# =========================================================
 
-if __name__ == "__main__":
+@app.post("/analyze")
+async def analyze(
 
-    import uvicorn
+    file: UploadFile = File(...),
 
-    uvicorn.run(
-        "api:app",
-        host="127.0.0.1",
-        port=8000,
-        reload=True
+    target_column: str = Form(...),
+
+):
+
+    filename = file.filename or ""
+
+    # -----------------------------------------------------
+    # 检查文件格式
+    # -----------------------------------------------------
+
+    if not filename.lower().endswith(
+        (
+            ".csv",
+            ".xlsx",
+            ".xls",
+        )
+    ):
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "仅支持 CSV、XLSX、XLS 文件"
+            ),
+        )
+
+    file_path = os.path.join(
+        UPLOAD_DIR,
+        filename,
     )
+
+    try:
+
+        # =================================================
+        # 1. 保存上传文件
+        # =================================================
+
+        with open(
+            file_path,
+            "wb",
+        ) as buffer:
+
+            shutil.copyfileobj(
+                file.file,
+                buffer,
+            )
+
+        print(
+            "\n" + "=" * 70
+        )
+
+        print(
+            "LLM DATA ANALYSIS AGENT"
+        )
+
+        print(
+            "=" * 70
+        )
+
+        print(
+            f"文件：{filename}"
+        )
+
+        # =================================================
+        # 2. 加载数据
+        # =================================================
+
+        print(
+            "\n[1/9] 正在读取数据..."
+        )
+
+        df = load_data(
+            file_path
+        )
+
+        original_rows = len(df)
+
+        original_columns = len(
+            df.columns
+        )
+
+        original_columns_list = (
+            df.columns.tolist()
+        )
+
+        print(
+            f"原始数据："
+            f"{original_rows} 行 × "
+            f"{original_columns} 列"
+        )
+
+        # =================================================
+        # 3. 检查目标字段
+        # =================================================
+
+        print(
+            "\n[2/9] 检查预测目标..."
+        )
+
+        if target_column not in df.columns:
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"预测目标字段 "
+                    f"'{target_column}' "
+                    f"不存在。"
+                    f"当前字段："
+                    f"{', '.join(df.columns.tolist())}"
+                ),
+            )
+
+        print(
+            f"预测目标："
+            f"{target_column}"
+        )
+
+        # =================================================
+        # 4. 数据清洗
+        # =================================================
+
+        print(
+            "\n[3/9] 正在进行数据清洗..."
+        )
+
+        (
+            cleaned_df,
+            cleaning_report,
+        ) = clean_data(
+            df,
+            return_report=True,
+        )
+
+        print(
+            f"清洗后数据："
+            f"{len(cleaned_df)} 行 × "
+            f"{len(cleaned_df.columns)} 列"
+        )
+
+        print(
+            f"删除重复记录："
+            f"{cleaning_report.get('duplicate_rows_removed', 0)}"
+        )
+
+        print(
+            f"原始缺失值："
+            f"{cleaning_report.get('original_missing_values', 0)}"
+        )
+
+        print(
+            f"剩余缺失值："
+            f"{cleaning_report.get('remaining_missing_values', 0)}"
+        )
+
+        # =================================================
+        # 5. EDA
+        # =================================================
+
+        print(
+            "\n[4/9] 正在进行 EDA..."
+        )
+
+        eda_result = perform_eda(
+            cleaned_df
+        )
+
+        print(
+            "EDA 完成"
+        )
+
+        # =================================================
+        # 6. Machine Learning
+        # =================================================
+
+        print(
+            "\n[5/9] 正在训练机器学习模型..."
+        )
+
+        ml_result = (
+            train_regression_model(
+                cleaned_df,
+                target_column,
+            )
+        )
+
+        print(
+            "机器学习模型训练完成"
+        )
+
+        print(
+            f"MAE: "
+            f"{ml_result.get('mae', 0):.4f}"
+        )
+
+        print(
+            f"RMSE: "
+            f"{ml_result.get('rmse', 0):.4f}"
+        )
+
+        # =================================================
+        # 7. Visualization
+        # =================================================
+
+        print(
+            "\n[6/9] 正在生成可视化..."
+        )
+
+        visualization_result = (
+            generate_visualizations(
+                cleaned_df,
+                ml_result,
+                OUTPUT_DIR,
+            )
+        )
+
+        print(
+            "可视化生成完成"
+        )
+
+        print(
+            visualization_result
+        )
+
+        # =================================================
+        # 8. AI Analysis
+        # =================================================
+
+        print(
+            "\n[7/9] 正在生成 AI 分析报告..."
+        )
+
+        data_info = {
+
+            "filename": filename,
+
+            "original_rows": (
+                original_rows
+            ),
+
+            "cleaned_rows": (
+                len(cleaned_df)
+            ),
+
+            "original_columns": (
+                original_columns
+            ),
+
+            "cleaned_columns": (
+                len(cleaned_df.columns)
+            ),
+
+            "columns": (
+                cleaned_df.columns.tolist()
+            ),
+
+            "target_column": (
+                target_column
+            ),
+        }
+
+        ai_analysis = (
+            generate_ai_analysis(
+                data_info=data_info,
+                eda_result=eda_result,
+                machine_learning=ml_result,
+                cleaning_report=cleaning_report,
+            )
+        )
+
+        print(
+            "普通 AI 分析报告生成完成"
+        )
+
+        # =================================================
+        # 8.5 Analysis Agent
+        # =================================================
+
+        print(
+            "\n[8/9] 正在启动 Analysis Agent..."
+        )
+
+        print(
+            "Agent 正在综合："
+            "数据质量 + EDA + 特征关系 + ML 模型"
+        )
+
+        analysis_agent_result = (
+            create_analysis_agent(
+                columns=(
+                    cleaned_df.columns.tolist()
+                ),
+
+                cleaning_report=(
+                    cleaning_report
+                ),
+
+                eda_result=(
+                    eda_result
+                ),
+
+                machine_learning=(
+                    ml_result
+                ),
+            )
+        )
+
+        print(
+            "Analysis Agent 分析完成"
+        )
+
+        print(
+            "----------------------------------------"
+        )
+
+        print(
+            "Agent 分析结果："
+        )
+
+        print(
+            analysis_agent_result
+        )
+
+        print(
+            "----------------------------------------"
+        )
+
+        # =================================================
+        # 9. 生成 PDF
+        # =================================================
+
+        print(
+            "\n[9/9] 正在生成 PDF 报告..."
+        )
+
+        # -------------------------------------------------
+        # 当前时间
+        # -------------------------------------------------
+
+        timestamp = (
+            datetime.now()
+            .strftime(
+                "%Y%m%d_%H%M%S"
+            )
+        )
+
+        # -------------------------------------------------
+        # 原始文件名去掉扩展名
+        # -------------------------------------------------
+
+        base_filename = (
+            os.path.splitext(
+                filename
+            )[0]
+        )
+
+        # -------------------------------------------------
+        # 防止文件名包含特殊字符
+        # -------------------------------------------------
+
+        safe_filename = "".join(
+            char
+            for char in base_filename
+            if char.isalnum()
+            or char in (
+                "_",
+                "-",
+            )
+        )
+
+        if not safe_filename:
+
+            safe_filename = (
+                "data_analysis"
+            )
+
+        # -------------------------------------------------
+        # PDF 文件名
+        # -------------------------------------------------
+
+        pdf_filename = (
+            f"{safe_filename}_analysis_"
+            f"{timestamp}.pdf"
+        )
+
+        # -------------------------------------------------
+        # PDF 实际保存路径
+        # -------------------------------------------------
+
+        pdf_path = os.path.join(
+            OUTPUT_DIR,
+            pdf_filename,
+        )
+
+        # -------------------------------------------------
+        # 生成 PDF
+        # -------------------------------------------------
+
+        try:
+
+            generate_pdf_report(
+
+                output_path=pdf_path,
+
+                filename=filename,
+
+                data_shape={
+                    "original": [
+                        original_rows,
+                        original_columns,
+                    ],
+
+                    "cleaned": [
+                        len(cleaned_df),
+                        len(
+                            cleaned_df.columns
+                        ),
+                    ],
+                },
+
+                columns=(
+                    original_columns_list
+                ),
+
+                cleaning_report=(
+                    cleaning_report
+                ),
+
+                eda_result=(
+                    eda_result
+                ),
+
+                machine_learning=(
+                    ml_result
+                ),
+
+                visualizations=(
+                    visualization_result
+                ),
+
+                ai_analysis=(
+                    ai_analysis
+                ),
+            )
+
+        except Exception as pdf_error:
+
+            import traceback
+
+            print(
+                "\n" + "=" * 70
+            )
+
+            print(
+                "PDF 生成失败"
+            )
+
+            print(
+                "=" * 70
+            )
+
+            traceback.print_exc()
+
+            print(
+                "=" * 70 + "\n"
+            )
+
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "数据分析成功，但 PDF "
+                    "报告生成失败："
+                    f"{str(pdf_error)}"
+                ),
+            )
+
+        # =================================================
+        # PDF URL
+        # =================================================
+
+        pdf_url = (
+            f"/outputs/{pdf_filename}"
+        )
+
+        print(
+            f"PDF 报告生成完成："
+            f"{pdf_filename}"
+        )
+
+        print(
+            f"PDF 地址："
+            f"{pdf_url}"
+        )
+
+        # =================================================
+        # 最终结果
+        # =================================================
+
+        result = {
+
+            "success": True,
+
+            "filename": filename,
+
+            # -------------------------------------------------
+            # 数据基本信息
+            # -------------------------------------------------
+
+            "data_info": data_info,
+
+            "data_shape": {
+
+                "original": [
+                    original_rows,
+                    original_columns,
+                ],
+
+                "cleaned": [
+                    len(cleaned_df),
+                    len(
+                        cleaned_df.columns
+                    ),
+                ],
+            },
+
+            "columns": (
+                original_columns_list
+            ),
+
+            "target_column": (
+                target_column
+            ),
+
+            # -------------------------------------------------
+            # 数据清洗
+            # -------------------------------------------------
+
+            "cleaning_report": (
+                cleaning_report
+            ),
+
+            # -------------------------------------------------
+            # EDA
+            # -------------------------------------------------
+
+            "eda": (
+                eda_result
+            ),
+
+            # -------------------------------------------------
+            # Machine Learning
+            # -------------------------------------------------
+
+            "machine_learning": (
+                ml_result
+            ),
+
+            # -------------------------------------------------
+            # Visualization
+            # -------------------------------------------------
+
+            "visualizations": (
+                visualization_result
+            ),
+
+            # -------------------------------------------------
+            # 普通 AI 分析
+            # -------------------------------------------------
+
+            "ai_analysis": (
+                ai_analysis
+            ),
+
+            # -------------------------------------------------
+            # Analysis Agent
+            # -------------------------------------------------
+
+            "analysis_agent": (
+                analysis_agent_result
+            ),
+
+            # -------------------------------------------------
+            # PDF
+            # -------------------------------------------------
+
+            "pdf_report": pdf_url,
+
+            "pdf_filename": pdf_filename,
+        }
+
+        # =================================================
+        # 完成
+        # =================================================
+
+        print(
+            "\n" + "=" * 70
+        )
+
+        print(
+            "数据分析全部完成"
+        )
+
+        print(
+            "=" * 70
+        )
+
+        print(
+            f"文件：{filename}"
+        )
+
+        print(
+            f"目标字段：{target_column}"
+        )
+
+        print(
+            f"数据："
+            f"{len(cleaned_df)} 行 × "
+            f"{len(cleaned_df.columns)} 列"
+        )
+
+        print(
+            f"PDF：{pdf_filename}"
+        )
+
+        print(
+            "Analysis Agent：完成"
+        )
+
+        print(
+            "=" * 70 + "\n"
+        )
+
+        return result
+
+    except HTTPException:
+
+        # FastAPI 主动抛出的错误
+        # 直接继续抛出
+
+        raise
+
+    except Exception as e:
+
+        import traceback
+
+        print(
+            "\n" + "=" * 70
+        )
+
+        print(
+            "数据分析失败"
+        )
+
+        print(
+            "=" * 70
+        )
+
+        traceback.print_exc()
+
+        print(
+            "=" * 70 + "\n"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )

@@ -3,16 +3,25 @@ import "./App.css";
 
 function App() {
   const [file, setFile] = useState(null);
-  const [targetColumn, setTargetColumn] = useState("final_score");
+  const [targetColumn, setTargetColumn] = useState("");
+  const [columns, setColumns] = useState([]);
+  const [numericColumns, setNumericColumns] = useState([]);
+  const [inspecting, setInspecting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
   // =========================================================
+  // 后端地址
+  // =========================================================
+
+  const API_BASE_URL = "http://127.0.0.1:8000";
+
+  // =========================================================
   // 文件选择
   // =========================================================
 
-  const handleFileChange = (event) => {
+  const handleFileChange = async (event) => {
     const selectedFile = event.target.files?.[0];
 
     if (!selectedFile) {
@@ -22,6 +31,55 @@ function App() {
     setFile(selectedFile);
     setResult(null);
     setError("");
+    setColumns([]);
+    setNumericColumns([]);
+    setTargetColumn("");
+    setInspecting(true);
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/inspect`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.detail ||
+            data.message ||
+            "字段识别失败，请检查后端服务"
+        );
+      }
+
+      setColumns(data.columns || []);
+      setNumericColumns(data.numeric_columns || []);
+
+      if (data.recommended_target) {
+        setTargetColumn(data.recommended_target);
+      } else if (data.numeric_columns?.length > 0) {
+        setTargetColumn(
+          data.numeric_columns[
+            data.numeric_columns.length - 1
+          ]
+        );
+      }
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err.message ||
+          "无法自动识别字段，请确认 FastAPI 正在运行"
+      );
+    } finally {
+      setInspecting(false);
+    }
   };
 
   // =========================================================
@@ -46,6 +104,7 @@ function App() {
     const formData = new FormData();
 
     formData.append("file", file);
+
     formData.append(
       "target_column",
       targetColumn.trim()
@@ -53,7 +112,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/analyze",
+        `${API_BASE_URL}/analyze`,
         {
           method: "POST",
           body: formData,
@@ -62,13 +121,16 @@ function App() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || data.success === false) {
         throw new Error(
           data.detail ||
             data.message ||
             "分析失败，请检查后端服务"
         );
       }
+
+      console.log("完整分析结果:", data);
+      console.log("可视化结果:", data.visualizations);
 
       setResult(data);
     } catch (err) {
@@ -84,22 +146,183 @@ function App() {
   };
 
   // =========================================================
+  // 下载 PDF
+  // =========================================================
+
+  const handleDownloadPDF = () => {
+    if (!result?.pdf_report) {
+      setError(
+        "PDF 报告暂未生成，请重新进行一次数据分析"
+      );
+      return;
+    }
+
+    const pdfPath = String(result.pdf_report)
+      .replace(/\\/g, "/");
+
+    const pdfUrl =
+      pdfPath.startsWith("http://") ||
+      pdfPath.startsWith("https://")
+        ? pdfPath
+        : `${API_BASE_URL}${
+            pdfPath.startsWith("/")
+              ? pdfPath
+              : `/${pdfPath}`
+          }`;
+
+    console.log("PDF 地址:", pdfUrl);
+
+    const link = document.createElement("a");
+
+    link.href = pdfUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+
+    if (result.pdf_filename) {
+      link.download = result.pdf_filename;
+    }
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+  };
+
+  // =========================================================
   // 图片地址
   // =========================================================
 
   const getImageUrl = (path) => {
     if (!path) {
+      console.warn("图片路径为空:", path);
       return "";
     }
 
+    let normalizedPath = String(path)
+      .trim()
+      .replace(/\\/g, "/");
+
+    console.log("图片原始路径:", path);
+    console.log("图片标准化路径:", normalizedPath);
+
+    // -------------------------------------------------------
+    // 1. 后端已经返回完整 URL
+    // -------------------------------------------------------
+
     if (
-      path.startsWith("http://") ||
-      path.startsWith("https://")
+      normalizedPath.startsWith("http://") ||
+      normalizedPath.startsWith("https://")
     ) {
-      return path;
+      console.log(
+        "图片最终地址:",
+        normalizedPath
+      );
+
+      return normalizedPath;
     }
 
-    return `http://127.0.0.1:8000${path}`;
+    // -------------------------------------------------------
+    // 2. Windows 本地绝对路径
+    //
+    // 例如：
+    // C:/Users/11449/Desktop/xxx/backend/outputs/a.png
+    //
+    // 这种路径不能直接给浏览器。
+    // 我们统一映射到 FastAPI 的 /outputs/xxx
+    // -------------------------------------------------------
+
+    const outputsIndex =
+      normalizedPath
+        .toLowerCase()
+        .lastIndexOf("/outputs/");
+
+    if (outputsIndex !== -1) {
+      const relativePath =
+        normalizedPath.substring(
+          outputsIndex
+        );
+
+      const finalUrl =
+        `${API_BASE_URL}${relativePath}`;
+
+      console.log(
+        "检测到本地绝对路径，转换为:",
+        finalUrl
+      );
+
+      return finalUrl;
+    }
+
+    // -------------------------------------------------------
+    // 3. 处理 outputs/xxx.png
+    // -------------------------------------------------------
+
+    if (
+      normalizedPath
+        .toLowerCase()
+        .startsWith("outputs/")
+    ) {
+      const finalUrl =
+        `${API_BASE_URL}/${normalizedPath}`;
+
+      console.log(
+        "相对 outputs 路径转换为:",
+        finalUrl
+      );
+
+      return finalUrl;
+    }
+
+    // -------------------------------------------------------
+    // 4. 处理 /outputs/xxx.png
+    // -------------------------------------------------------
+
+    if (
+      normalizedPath
+        .toLowerCase()
+        .startsWith("/outputs/")
+    ) {
+      const finalUrl =
+        `${API_BASE_URL}${normalizedPath}`;
+
+      console.log(
+        "URL 路径转换为:",
+        finalUrl
+      );
+
+      return finalUrl;
+    }
+
+    // -------------------------------------------------------
+    // 5. 其他普通路径
+    // -------------------------------------------------------
+
+    const finalPath =
+      normalizedPath.startsWith("/")
+        ? normalizedPath
+        : `/${normalizedPath}`;
+
+    const finalUrl =
+      `${API_BASE_URL}${finalPath}`;
+
+    console.log(
+      "普通路径转换为:",
+      finalUrl
+    );
+
+    return finalUrl;
+  };
+
+  // =========================================================
+  // 图片加载失败处理
+  // =========================================================
+
+  const handleImageError = (event) => {
+    console.error(
+      "图片加载失败:",
+      event.currentTarget.src
+    );
   };
 
   // =========================================================
@@ -116,12 +339,14 @@ function App() {
 
     const originalRows =
       Number(
-        result.cleaning_report.original_rows
+        result.cleaning_report
+          .original_rows
       ) || 0;
 
     const cleanedRows =
       Number(
-        result.cleaning_report.cleaned_rows
+        result.cleaning_report
+          .cleaned_rows
       ) || 0;
 
     if (originalRows === 0) {
@@ -139,27 +364,36 @@ function App() {
   // =========================================================
 
   const getAIInsights = () => {
-    const ml = result?.machine_learning;
-    const cleaning = result?.cleaning_report;
+    const ml =
+      result?.machine_learning;
+
+    const cleaning =
+      result?.cleaning_report;
 
     if (!ml) {
       return {
         coreFindings: [
           "暂无足够数据生成核心发现",
         ],
+
         keyFactors: [],
+
         warnings: [],
+
         suggestions: [
           "请先完成一次数据分析",
         ],
       };
     }
 
-    const sortedFeatures = Object.entries(
-      ml.feature_importance || {}
-    ).sort(
-      (a, b) => Number(b[1]) - Number(a[1])
-    );
+    const sortedFeatures =
+      Object.entries(
+        ml.feature_importance || {}
+      ).sort(
+        (a, b) =>
+          Number(b[1]) -
+          Number(a[1])
+      );
 
     const topFeature =
       sortedFeatures[0];
@@ -167,28 +401,31 @@ function App() {
     return {
       coreFindings: [
         topFeature
-          ? `${topFeature[0]} 是当前模型中最重要的影响因素，特征重要性约为 ${(Number(
-              topFeature[1]
-            ) * 100).toFixed(1)}%。`
+          ? `${topFeature[0]} 是当前模型中最重要的影响因素，特征重要性约为 ${(
+              Number(topFeature[1]) *
+              100
+            ).toFixed(1)}%。`
           : "当前模型暂未识别出明显的关键影响因素。",
 
         `模型 MAE 为 ${Number(
           ml.mae || 0
-        ).toFixed(
-          2
-        )}，RMSE 为 ${Number(
+        ).toFixed(2)}，RMSE 为 ${Number(
           ml.rmse || 0
         ).toFixed(2)}。`,
       ],
 
-      keyFactors: sortedFeatures
-        .slice(0, 4)
-        .map(([name, value]) => ({
-          name,
-          value: `${(
-            Number(value) * 100
-          ).toFixed(1)}%`,
-        })),
+      keyFactors:
+        sortedFeatures
+          .slice(0, 4)
+          .map(
+            ([name, value]) => ({
+              name,
+              value: `${(
+                Number(value) *
+                100
+              ).toFixed(1)}%`,
+            })
+          ),
 
       warnings: cleaning
         ? [
@@ -202,7 +439,9 @@ function App() {
               ? `清洗后仍存在 ${cleaning.remaining_missing_values} 个缺失值。`
               : "数据清洗完成后不存在缺失值。",
           ]
-        : ["暂无数据清洗报告。"],
+        : [
+            "暂无数据清洗报告。",
+          ],
 
       suggestions: [
         "结合特征重要性进一步分析关键变量与目标变量之间的关系。",
@@ -213,13 +452,139 @@ function App() {
   };
 
   const aiInsights =
-    result ? getAIInsights() : null;
+    result
+      ? getAIInsights()
+      : null;
+
+  // =========================================================
+  // AI Agent 数据处理
+  // =========================================================
+
+  const getAgentResult = () => {
+    const agent =
+      result?.analysis_agent;
+
+    if (!agent) {
+      return {
+        coreFindings: [],
+        keyFactors: [],
+        dataQuality: [],
+        relationships: [],
+        modelEvaluation: [],
+        nextAnalysis: [],
+        rawAnalysis: "",
+      };
+    }
+
+    return {
+      coreFindings:
+        Array.isArray(
+          agent.core_findings
+        )
+          ? agent.core_findings
+          : [],
+
+      keyFactors:
+        Array.isArray(
+          agent.key_factors
+        )
+          ? agent.key_factors
+          : [],
+
+      dataQuality:
+        Array.isArray(
+          agent.data_quality
+        )
+          ? agent.data_quality
+          : [],
+
+      relationships:
+        Array.isArray(
+          agent.relationships
+        )
+          ? agent.relationships
+          : [],
+
+      modelEvaluation:
+        Array.isArray(
+          agent.model_evaluation
+        )
+          ? agent.model_evaluation
+          : [],
+
+      nextAnalysis:
+        Array.isArray(
+          agent.next_analysis
+        )
+          ? agent.next_analysis
+          : [],
+
+      rawAnalysis:
+        agent.raw_analysis || "",
+    };
+  };
+
+  const agentResult =
+    result
+      ? getAgentResult()
+      : null;
+
+  // =========================================================
+  // Agent 列表渲染
+  // =========================================================
+
+  const renderAgentList = (
+    items,
+    emptyText = "暂无相关分析"
+  ) => {
+    if (
+      !items ||
+      items.length === 0
+    ) {
+      return (
+        <p className="agent-empty">
+          {emptyText}
+        </p>
+      );
+    }
+
+    return (
+      <div className="agent-list">
+        {items.map(
+          (
+            item,
+            index
+          ) => (
+            <div
+              className="agent-list-item"
+              key={index}
+            >
+              <span className="agent-list-dot">
+                {index + 1}
+              </span>
+
+              <p>
+                {typeof item ===
+                "string"
+                  ? item
+                  : JSON.stringify(
+                      item
+                    )}
+              </p>
+            </div>
+          )
+        )}
+      </div>
+    );
+  };
 
   // =========================================================
   // Markdown 行内渲染
   // =========================================================
 
-  const renderInlineMarkdown = (text) => {
+  const renderInlineMarkdown = (
+    text
+  ) => {
     if (!text) {
       return null;
     }
@@ -234,12 +599,14 @@ function App() {
     let key = 0;
 
     while (
-      (match = regex.exec(text)) !== null
+      (match =
+        regex.exec(text)) !== null
     ) {
-      const before = text.slice(
-        lastIndex,
-        match.index
-      );
+      const before =
+        text.slice(
+          lastIndex,
+          match.index
+        );
 
       if (before) {
         parts.push(
@@ -249,39 +616,62 @@ function App() {
         );
       }
 
-      const token = match[0];
+      const token =
+        match[0];
 
       if (
-        token.startsWith("**") &&
-        token.endsWith("**")
+        token.startsWith(
+          "**"
+        ) &&
+        token.endsWith(
+          "**"
+        )
       ) {
         parts.push(
-          <strong key={key++}>
-            {token.slice(2, -2)}
+          <strong
+            key={key++}
+          >
+            {token.slice(
+              2,
+              -2
+            )}
           </strong>
         );
       } else if (
-        token.startsWith("`") &&
-        token.endsWith("`")
+        token.startsWith(
+          "`"
+        ) &&
+        token.endsWith(
+          "`"
+        )
       ) {
         parts.push(
           <span
             key={key++}
             className="ai-code"
           >
-            {token.slice(1, -1)}
+            {token.slice(
+              1,
+              -1
+            )}
           </span>
         );
       }
 
       lastIndex =
-        match.index + token.length;
+        match.index +
+        token.length;
     }
 
-    if (lastIndex < text.length) {
+    if (
+      lastIndex <
+      text.length
+    ) {
       parts.push(
         <span key={key++}>
-          {text.slice(lastIndex)}
+          {text.slice(
+            lastIndex
+          )}
         </span>
       );
     }
@@ -293,7 +683,9 @@ function App() {
   // DeepSeek AI 报告渲染
   // =========================================================
 
-  const renderAIReport = (text) => {
+  const renderAIReport = (
+    text
+  ) => {
     if (!text) {
       return (
         <p className="ai-empty">
@@ -302,12 +694,21 @@ function App() {
       );
     }
 
-    const normalizedText = String(text)
-      .replace(/\r\n/g, "\n")
-      .replace(/\r/g, "\n");
+    const normalizedText =
+      String(text)
+        .replace(
+          /\r\n/g,
+          "\n"
+        )
+        .replace(
+          /\r/g,
+          "\n"
+        );
 
     const lines =
-      normalizedText.split("\n");
+      normalizedText.split(
+        "\n"
+      );
 
     const elements = [];
 
@@ -315,16 +716,26 @@ function App() {
     let orderedItems = [];
 
     const flushLists = () => {
-      if (unorderedItems.length > 0) {
+      if (
+        unorderedItems.length >
+        0
+      ) {
         elements.push(
           <ul
             className="ai-report-list"
             key={`ul-${elements.length}`}
           >
             {unorderedItems.map(
-              (item, index) => (
-                <li key={index}>
-                  {renderInlineMarkdown(item)}
+              (
+                item,
+                index
+              ) => (
+                <li
+                  key={index}
+                >
+                  {renderInlineMarkdown(
+                    item
+                  )}
                 </li>
               )
             )}
@@ -334,16 +745,26 @@ function App() {
         unorderedItems = [];
       }
 
-      if (orderedItems.length > 0) {
+      if (
+        orderedItems.length >
+        0
+      ) {
         elements.push(
           <ol
             className="ai-report-list"
             key={`ol-${elements.length}`}
           >
             {orderedItems.map(
-              (item, index) => (
-                <li key={index}>
-                  {renderInlineMarkdown(item)}
+              (
+                item,
+                index
+              ) => (
+                <li
+                  key={index}
+                >
+                  {renderInlineMarkdown(
+                    item
+                  )}
                 </li>
               )
             )}
@@ -355,17 +776,23 @@ function App() {
     };
 
     lines.forEach(
-      (rawLine, index) => {
-        const line = rawLine.trim();
+      (
+        rawLine,
+        index
+      ) => {
+        const line =
+          rawLine.trim();
 
-        // 空行
         if (!line) {
           flushLists();
           return;
         }
 
-        // Markdown 一级标题
-        if (line.startsWith("# ")) {
+        if (
+          line.startsWith(
+            "# "
+          )
+        ) {
           flushLists();
 
           elements.push(
@@ -385,8 +812,11 @@ function App() {
           return;
         }
 
-        // Markdown 二级标题
-        if (line.startsWith("## ")) {
+        if (
+          line.startsWith(
+            "## "
+          )
+        ) {
           flushLists();
 
           elements.push(
@@ -406,8 +836,11 @@ function App() {
           return;
         }
 
-        // Markdown 三级标题
-        if (line.startsWith("### ")) {
+        if (
+          line.startsWith(
+            "### "
+          )
+        ) {
           flushLists();
 
           elements.push(
@@ -427,16 +860,14 @@ function App() {
           return;
         }
 
-        // =====================================================
-        // "1. 数据集概况" 这种标题
-        // =====================================================
-
         const numberedHeading =
           line.match(
             /^(\d+)\.\s+(.+)$/
           );
 
-        if (numberedHeading) {
+        if (
+          numberedHeading
+        ) {
           flushLists();
 
           elements.push(
@@ -445,7 +876,9 @@ function App() {
               key={`number-title-${index}`}
             >
               <span className="ai-report-number">
-                {numberedHeading[1]}
+                {
+                  numberedHeading[1]
+                }
               </span>
 
               {renderInlineMarkdown(
@@ -457,14 +890,16 @@ function App() {
           return;
         }
 
-        // =====================================================
-        // 无序列表
-        // =====================================================
-
         if (
-          line.startsWith("- ") ||
-          line.startsWith("* ") ||
-          line.startsWith("• ")
+          line.startsWith(
+            "- "
+          ) ||
+          line.startsWith(
+            "* "
+          ) ||
+          line.startsWith(
+            "• "
+          )
         ) {
           orderedItems = [];
 
@@ -477,10 +912,6 @@ function App() {
 
           return;
         }
-
-        // =====================================================
-        // 有序列表
-        // =====================================================
 
         const orderedItem =
           line.match(
@@ -497,10 +928,6 @@ function App() {
           return;
         }
 
-        // =====================================================
-        // 普通段落
-        // =====================================================
-
         flushLists();
 
         elements.push(
@@ -508,7 +935,9 @@ function App() {
             className="ai-report-paragraph"
             key={`p-${index}`}
           >
-            {renderInlineMarkdown(line)}
+            {renderInlineMarkdown(
+              line
+            )}
           </p>
         );
       }
@@ -531,7 +960,9 @@ function App() {
       ===================================================== */}
 
       <header className="header">
+
         <div>
+
           <h1>
             LLM Data Analysis Agent
           </h1>
@@ -539,12 +970,17 @@ function App() {
           <p>
             AI 驱动的数据分析与智能洞察平台
           </p>
+
         </div>
 
         <div className="status">
+
           <span className="status-dot"></span>
+
           AI Engine Online
+
         </div>
+
       </header>
 
       {/* =====================================================
@@ -554,9 +990,11 @@ function App() {
       <section className="upload-card">
 
         <div className="section-title">
+
           <span>📁</span>
 
           <div>
+
             <h2>
               上传数据
             </h2>
@@ -564,7 +1002,9 @@ function App() {
             <p>
               支持 CSV、Excel 数据文件
             </p>
+
           </div>
+
         </div>
 
         <label className="upload-box">
@@ -582,9 +1022,11 @@ function App() {
           </div>
 
           <div className="upload-text">
+
             {file
               ? file.name
               : "点击选择数据文件"}
+
           </div>
 
           <div className="upload-hint">
@@ -592,6 +1034,65 @@ function App() {
           </div>
 
         </label>
+
+        {columns.length > 0 &&
+          !inspecting && (
+
+            <div className="field-detection">
+
+              <div className="field-detection-title">
+                🔍 已自动识别数据字段
+              </div>
+
+              <div className="field-detection-info">
+
+                <span>
+                  共识别{" "}
+                  {columns.length}{" "}
+                  个字段
+                </span>
+
+                <span>
+                  数值字段{" "}
+                  {numericColumns.length}{" "}
+                  个
+                </span>
+
+              </div>
+
+              <div className="tags">
+
+                {columns.map(
+                  (column) => (
+
+                    <span
+                      className={
+                        numericColumns.includes(
+                          column
+                        )
+                          ? "tag tag-numeric"
+                          : "tag"
+                      }
+                      key={column}
+                    >
+
+                      {column}
+
+                      {numericColumns.includes(
+                        column
+                      ) &&
+                        " · 数值"}
+
+                    </span>
+
+                  )
+                )}
+
+              </div>
+
+            </div>
+
+          )}
 
         <div className="analysis-options">
 
@@ -601,35 +1102,81 @@ function App() {
               预测目标
             </label>
 
-            <input
-              type="text"
-              value={targetColumn}
-              onChange={(e) =>
-                setTargetColumn(
-                  e.target.value
-                )
-              }
-              placeholder="例如：final_score"
-            />
+            {inspecting ? (
+
+              <div className="field-loading">
+                正在自动识别字段...
+              </div>
+
+            ) : (
+
+              <select
+                value={
+                  targetColumn
+                }
+                onChange={(e) =>
+                  setTargetColumn(
+                    e.target.value
+                  )
+                }
+                disabled={
+                  numericColumns.length ===
+                  0
+                }
+              >
+
+                {numericColumns.length ===
+                0 ? (
+
+                  <option value="">
+                    暂无可用数值字段
+                  </option>
+
+                ) : (
+
+                  numericColumns.map(
+                    (column) => (
+
+                      <option
+                        value={column}
+                        key={column}
+                      >
+                        {column}
+                      </option>
+
+                    )
+                  )
+
+                )}
+
+              </select>
+
+            )}
 
           </div>
 
           <button
             className="analyze-button"
-            onClick={handleAnalyze}
+            onClick={
+              handleAnalyze
+            }
             disabled={loading}
           >
+
             {loading
               ? "AI 正在分析..."
               : "🚀 开始 AI 分析"}
+
           </button>
 
         </div>
 
         {error && (
+
           <div className="error">
             ❌ {error}
           </div>
+
         )}
 
       </section>
@@ -639,6 +1186,7 @@ function App() {
       ===================================================== */}
 
       {loading && (
+
         <section className="loading-card">
 
           <div className="loader"></div>
@@ -648,10 +1196,11 @@ function App() {
           </h3>
 
           <p>
-            数据清洗 → EDA → 机器学习 → 可视化 → DeepSeek AI
+            数据清洗 → EDA → 机器学习 → 可视化 → DeepSeek AI → Analysis Agent → PDF 报告
           </p>
 
         </section>
+
       )}
 
       {/* =====================================================
@@ -659,7 +1208,58 @@ function App() {
       ===================================================== */}
 
       {result && (
+
         <main className="results">
+
+          {/* =================================================
+              PDF 报告
+          ================================================= */}
+
+          <section className="result-section pdf-section">
+
+            <div className="pdf-report-box">
+
+              <div className="pdf-report-info">
+
+                <div className="pdf-report-icon">
+                  📄
+                </div>
+
+                <div>
+
+                  <h2>
+                    数据分析报告
+                  </h2>
+
+                  <p>
+                    已根据本次数据分析结果自动生成 PDF 报告
+                  </p>
+
+                  {result.pdf_filename && (
+                    <small>
+                      {result.pdf_filename}
+                    </small>
+                  )}
+
+                </div>
+
+              </div>
+
+              <button
+                className="pdf-download-button"
+                onClick={
+                  handleDownloadPDF
+                }
+                disabled={
+                  !result.pdf_report
+                }
+              >
+                📄 下载 PDF 报告
+              </button>
+
+            </div>
+
+          </section>
 
           {/* =================================================
               数据概览
@@ -672,6 +1272,7 @@ function App() {
               <span>📊</span>
 
               <div>
+
                 <h2>
                   数据概览
                 </h2>
@@ -679,13 +1280,12 @@ function App() {
                 <p>
                   数据集基本信息与数据质量概览
                 </p>
+
               </div>
 
             </div>
 
             <div className="stats-grid">
-
-              {/* 原始数据 */}
 
               <div className="stat-card">
 
@@ -694,13 +1294,17 @@ function App() {
                 </span>
 
                 <strong>
+
                   {
-                    result.cleaning_report
+                    result
+                      .cleaning_report
                       ?.original_rows ??
-                    result.data_shape
+                    result
+                      .data_shape
                       ?.original?.[0] ??
                     0
                   }
+
                 </strong>
 
                 <small>
@@ -708,8 +1312,6 @@ function App() {
                 </small>
 
               </div>
-
-              {/* 清洗后数据 */}
 
               <div className="stat-card">
 
@@ -718,13 +1320,17 @@ function App() {
                 </span>
 
                 <strong>
+
                   {
-                    result.cleaning_report
+                    result
+                      .cleaning_report
                       ?.cleaned_rows ??
-                    result.data_shape
+                    result
+                      .data_shape
                       ?.cleaned?.[0] ??
                     0
                   }
+
                 </strong>
 
                 <small>
@@ -733,8 +1339,6 @@ function App() {
 
               </div>
 
-              {/* 特征数量 */}
-
               <div className="stat-card">
 
                 <span>
@@ -742,15 +1346,20 @@ function App() {
                 </span>
 
                 <strong>
+
                   {
-                    result.cleaning_report
+                    result
+                      .cleaning_report
                       ?.cleaned_columns ??
-                    result.data_shape
+                    result
+                      .data_shape
                       ?.cleaned?.[1] ??
-                    result.columns
+                    result
+                      .columns
                       ?.length ??
                     0
                   }
+
                 </strong>
 
                 <small>
@@ -759,8 +1368,6 @@ function App() {
 
               </div>
 
-              {/* 数据保留率 */}
-
               <div className="stat-card">
 
                 <span>
@@ -768,7 +1375,9 @@ function App() {
                 </span>
 
                 <strong>
-                  {getRetentionRate()}%
+                  {
+                    getRetentionRate()
+                  }%
                 </strong>
 
                 <small>
@@ -777,8 +1386,6 @@ function App() {
 
               </div>
 
-              {/* MAE */}
-
               <div className="stat-card">
 
                 <span>
@@ -786,11 +1393,13 @@ function App() {
                 </span>
 
                 <strong>
+
                   {Number(
                     result
                       .machine_learning
                       ?.mae ?? 0
                   ).toFixed(2)}
+
                 </strong>
 
                 <small>
@@ -799,8 +1408,6 @@ function App() {
 
               </div>
 
-              {/* RMSE */}
-
               <div className="stat-card">
 
                 <span>
@@ -808,11 +1415,13 @@ function App() {
                 </span>
 
                 <strong>
+
                   {Number(
                     result
                       .machine_learning
                       ?.rmse ?? 0
                   ).toFixed(2)}
+
                 </strong>
 
                 <small>
@@ -822,8 +1431,6 @@ function App() {
               </div>
 
             </div>
-
-            {/* 数据字段 */}
 
             <div className="columns-box">
 
@@ -833,15 +1440,16 @@ function App() {
 
               <div className="tags">
 
-                {(result.columns ||
-                  []).map(
+                {(result.columns || []).map(
                   (column) => (
+
                     <span
                       className="tag"
                       key={column}
                     >
                       {column}
                     </span>
+
                   )
                 )}
 
@@ -856,6 +1464,7 @@ function App() {
           ================================================= */}
 
           {result.cleaning_report && (
+
             <section className="result-section">
 
               <div className="section-title">
@@ -863,6 +1472,7 @@ function App() {
                 <span>🧹</span>
 
                 <div>
+
                   <h2>
                     数据清洗流程
                   </h2>
@@ -870,11 +1480,10 @@ function App() {
                   <p>
                     自动完成重复值、缺失值与数据质量处理
                   </p>
+
                 </div>
 
               </div>
-
-              {/* 清洗统计 */}
 
               <div className="cleaning-summary">
 
@@ -885,12 +1494,14 @@ function App() {
                   </span>
 
                   <strong>
+
                     {
                       result
                         .cleaning_report
                         .duplicate_rows_removed ??
                       0
                     }
+
                   </strong>
 
                   <small>
@@ -906,6 +1517,7 @@ function App() {
                   </span>
 
                   <strong>
+
                     {
                       (
                         result
@@ -920,6 +1532,7 @@ function App() {
                         0
                       )
                     }
+
                   </strong>
 
                   <small>
@@ -935,12 +1548,14 @@ function App() {
                   </span>
 
                   <strong>
+
                     {
                       result
                         .cleaning_report
                         .empty_columns_removed ??
                       0
                     }
+
                   </strong>
 
                   <small>
@@ -956,12 +1571,14 @@ function App() {
                   </span>
 
                   <strong>
+
                     {
                       result
                         .cleaning_report
                         .remaining_missing_values ??
                       0
                     }
+
                   </strong>
 
                   <small>
@@ -972,8 +1589,6 @@ function App() {
 
               </div>
 
-              {/* 清洗流程 */}
-
               <div className="cleaning-pipeline">
 
                 <div className="pipeline-step">
@@ -983,11 +1598,13 @@ function App() {
                   </div>
 
                   <div>
+
                     <strong>
                       原始数据
                     </strong>
 
                     <p>
+
                       {
                         result
                           .cleaning_report
@@ -1000,7 +1617,9 @@ function App() {
                           .original_columns
                       }{" "}
                       列
+
                     </p>
+
                   </div>
 
                 </div>
@@ -1016,11 +1635,13 @@ function App() {
                   </div>
 
                   <div>
+
                     <strong>
                       删除重复记录
                     </strong>
 
                     <p>
+
                       删除{" "}
                       {
                         result
@@ -1028,7 +1649,9 @@ function App() {
                           .duplicate_rows_removed
                       }{" "}
                       条重复记录
+
                     </p>
+
                   </div>
 
                 </div>
@@ -1044,11 +1667,13 @@ function App() {
                   </div>
 
                   <div>
+
                     <strong>
                       处理缺失值
                     </strong>
 
                     <p>
+
                       数值字段使用中位数填充，共处理{" "}
                       {
                         result
@@ -1064,7 +1689,9 @@ function App() {
                         0
                       }{" "}
                       个
+
                     </p>
+
                   </div>
 
                 </div>
@@ -1080,11 +1707,13 @@ function App() {
                   </div>
 
                   <div>
+
                     <strong>
                       清洗完成
                     </strong>
 
                     <p>
+
                       {
                         result
                           .cleaning_report
@@ -1102,19 +1731,20 @@ function App() {
                           .cleaning_report
                           .remaining_missing_values
                       }
+
                     </p>
+
                   </div>
 
                 </div>
 
               </div>
 
-              {/* 清洗记录 */}
-
               {result
                 .cleaning_report
                 .cleaning_steps
                 ?.length > 0 && (
+
                 <div className="cleaning-details">
 
                   <strong>
@@ -1122,22 +1752,33 @@ function App() {
                   </strong>
 
                   <ul>
+
                     {result
                       .cleaning_report
                       .cleaning_steps
                       .map(
-                        (step, index) => (
-                          <li key={index}>
+                        (
+                          step,
+                          index
+                        ) => (
+
+                          <li
+                            key={index}
+                          >
                             {step}
                           </li>
+
                         )
                       )}
+
                   </ul>
 
                 </div>
+
               )}
 
             </section>
+
           )}
 
           {/* =================================================
@@ -1145,6 +1786,7 @@ function App() {
           ================================================= */}
 
           {result.visualizations && (
+
             <section className="result-section">
 
               <div className="section-title">
@@ -1152,6 +1794,7 @@ function App() {
                 <span>📈</span>
 
                 <div>
+
                   <h2>
                     数据可视化
                   </h2>
@@ -1159,13 +1802,12 @@ function App() {
                   <p>
                     自动生成的数据分析图表
                   </p>
+
                 </div>
 
               </div>
 
               <div className="charts">
-
-                {/* 相关性热力图 */}
 
                 <div className="chart-card">
 
@@ -1180,11 +1822,12 @@ function App() {
                         .correlation_heatmap
                     )}
                     alt="Correlation Heatmap"
+                    onError={
+                      handleImageError
+                    }
                   />
 
                 </div>
-
-                {/* 学习时间 */}
 
                 <div className="chart-card">
 
@@ -1199,11 +1842,12 @@ function App() {
                         .study_hours_vs_final_score
                     )}
                     alt="Study Hours vs Final Score"
+                    onError={
+                      handleImageError
+                    }
                   />
 
                 </div>
-
-                {/* 特征重要性 */}
 
                 <div className="chart-card chart-wide">
 
@@ -1218,6 +1862,9 @@ function App() {
                         .feature_importance
                     )}
                     alt="Feature Importance"
+                    onError={
+                      handleImageError
+                    }
                   />
 
                 </div>
@@ -1225,6 +1872,7 @@ function App() {
               </div>
 
             </section>
+
           )}
 
           {/* =================================================
@@ -1232,6 +1880,7 @@ function App() {
           ================================================= */}
 
           {result.machine_learning && (
+
             <section className="result-section">
 
               <div className="section-title">
@@ -1239,6 +1888,7 @@ function App() {
                 <span>🧠</span>
 
                 <div>
+
                   <h2>
                     机器学习结果
                   </h2>
@@ -1246,6 +1896,7 @@ function App() {
                   <p>
                     Random Forest 回归模型
                   </p>
+
                 </div>
 
               </div>
@@ -1253,31 +1904,39 @@ function App() {
               <div className="model-result">
 
                 <div>
+
                   <span>
                     MAE
                   </span>
 
                   <strong>
+
                     {Number(
                       result
                         .machine_learning
                         .mae || 0
                     ).toFixed(3)}
+
                   </strong>
+
                 </div>
 
                 <div>
+
                   <span>
                     RMSE
                   </span>
 
                   <strong>
+
                     {Number(
                       result
                         .machine_learning
                         .rmse || 0
                     ).toFixed(3)}
+
                   </strong>
+
                 </div>
 
               </div>
@@ -1300,7 +1959,13 @@ function App() {
                       Number(a[1])
                   )
                   .map(
-                    ([name, value]) => (
+                    (
+                      [
+                        name,
+                        value,
+                      ]
+                    ) => (
+
                       <div
                         className="importance-item"
                         key={name}
@@ -1324,20 +1989,26 @@ function App() {
                         </div>
 
                         <div className="importance-value">
+
                           {(
-                            Number(value) *
-                            100
+                            Number(
+                              value
+                            ) * 100
                           ).toFixed(1)}
+
                           %
+
                         </div>
 
                       </div>
+
                     )
                   )}
 
               </div>
 
             </section>
+
           )}
 
           {/* =================================================
@@ -1345,6 +2016,7 @@ function App() {
           ================================================= */}
 
           {aiInsights && (
+
             <section className="result-section insights-section">
 
               <div className="section-title">
@@ -1352,6 +2024,7 @@ function App() {
                 <span>✨</span>
 
                 <div>
+
                   <h2>
                     AI Insights
                   </h2>
@@ -1359,13 +2032,12 @@ function App() {
                   <p>
                     基于数据清洗、统计分析与机器学习结果提炼的核心洞察
                   </p>
+
                 </div>
 
               </div>
 
               <div className="insights-grid">
-
-                {/* 核心发现 */}
 
                 <div className="insight-card">
 
@@ -1386,7 +2058,11 @@ function App() {
                     {aiInsights
                       .coreFindings
                       .map(
-                        (item, index) => (
+                        (
+                          item,
+                          index
+                        ) => (
+
                           <div
                             className="insight-item"
                             key={index}
@@ -1401,14 +2077,13 @@ function App() {
                             </p>
 
                           </div>
+
                         )
                       )}
 
                   </div>
 
                 </div>
-
-                {/* 关键影响因素 */}
 
                 <div className="insight-card">
 
@@ -1429,10 +2104,14 @@ function App() {
                     {aiInsights
                       .keyFactors
                       .length > 0 ? (
+
                       aiInsights
                         .keyFactors
                         .map(
-                          (factor) => (
+                          (
+                            factor
+                          ) => (
+
                             <div
                               className="factor-item"
                               key={
@@ -1453,19 +2132,21 @@ function App() {
                               </strong>
 
                             </div>
+
                           )
                         )
+
                     ) : (
+
                       <p>
                         暂无特征重要性数据
                       </p>
+
                     )}
 
                   </div>
 
                 </div>
-
-                {/* 数据质量 */}
 
                 <div className="insight-card">
 
@@ -1486,7 +2167,11 @@ function App() {
                     {aiInsights
                       .warnings
                       .map(
-                        (item, index) => (
+                        (
+                          item,
+                          index
+                        ) => (
+
                           <div
                             className="insight-item"
                             key={index}
@@ -1501,14 +2186,13 @@ function App() {
                             </p>
 
                           </div>
+
                         )
                       )}
 
                   </div>
 
                 </div>
-
-                {/* AI 建议 */}
 
                 <div className="insight-card">
 
@@ -1529,7 +2213,11 @@ function App() {
                     {aiInsights
                       .suggestions
                       .map(
-                        (item, index) => (
+                        (
+                          item,
+                          index
+                        ) => (
+
                           <div
                             className="insight-item"
                             key={index}
@@ -1544,6 +2232,7 @@ function App() {
                             </p>
 
                           </div>
+
                         )
                       )}
 
@@ -1554,6 +2243,207 @@ function App() {
               </div>
 
             </section>
+
+          )}
+
+          {/* =================================================
+              Analysis Agent
+          ================================================= */}
+
+          {result.analysis_agent && (
+
+            <section className="result-section agent-section">
+
+              <div className="agent-header">
+
+                <div className="agent-title-wrapper">
+
+                  <div className="agent-main-icon">
+                    🧠
+                  </div>
+
+                  <div>
+
+                    <h2>
+                      AI Agent 深度分析
+                    </h2>
+
+                    <p>
+                      Agent 基于数据清洗、EDA、机器学习结果进行二次推理与分析
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <div className="agent-status">
+
+                  <span className="agent-status-dot"></span>
+
+                  Agent Analysis Complete
+
+                </div>
+
+              </div>
+
+              <div className="agent-grid">
+
+                <div className="agent-card agent-card-large">
+
+                  <div className="agent-card-header">
+
+                    <span>
+                      📌
+                    </span>
+
+                    <h3>
+                      核心发现
+                    </h3>
+
+                  </div>
+
+                  {renderAgentList(
+                    agentResult.coreFindings,
+                    "Agent 暂未生成核心发现"
+                  )}
+
+                </div>
+
+                <div className="agent-card">
+
+                  <div className="agent-card-header">
+
+                    <span>
+                      🎯
+                    </span>
+
+                    <h3>
+                      关键影响因素
+                    </h3>
+
+                  </div>
+
+                  {renderAgentList(
+                    agentResult.keyFactors,
+                    "Agent 暂未识别关键影响因素"
+                  )}
+
+                </div>
+
+                <div className="agent-card">
+
+                  <div className="agent-card-header">
+
+                    <span>
+                      🛡️
+                    </span>
+
+                    <h3>
+                      数据质量
+                    </h3>
+
+                  </div>
+
+                  {renderAgentList(
+                    agentResult.dataQuality,
+                    "数据质量良好，暂无额外提醒"
+                  )}
+
+                </div>
+
+                <div className="agent-card">
+
+                  <div className="agent-card-header">
+
+                    <span>
+                      🔗
+                    </span>
+
+                    <h3>
+                      变量关系
+                    </h3>
+
+                  </div>
+
+                  {renderAgentList(
+                    agentResult.relationships,
+                    "暂无明显变量关系分析"
+                  )}
+
+                </div>
+
+                <div className="agent-card">
+
+                  <div className="agent-card-header">
+
+                    <span>
+                      📊
+                    </span>
+
+                    <h3>
+                      模型评价
+                    </h3>
+
+                  </div>
+
+                  {renderAgentList(
+                    agentResult.modelEvaluation,
+                    "暂无模型评价"
+                  )}
+
+                </div>
+
+                <div className="agent-card agent-card-large">
+
+                  <div className="agent-card-header">
+
+                    <span>
+                      🚀
+                    </span>
+
+                    <h3>
+                      下一步分析建议
+                    </h3>
+
+                  </div>
+
+                  {renderAgentList(
+                    agentResult.nextAnalysis,
+                    "Agent 暂未生成进一步分析建议"
+                  )}
+
+                </div>
+
+              </div>
+
+              {agentResult.rawAnalysis && (
+
+                <div className="agent-raw">
+
+                  <div className="agent-card-header">
+
+                    <span>
+                      🤖
+                    </span>
+
+                    <h3>
+                      Agent 原始分析
+                    </h3>
+
+                  </div>
+
+                  <pre>
+                    {
+                      agentResult.rawAnalysis
+                    }
+                  </pre>
+
+                </div>
+
+              )}
+
+            </section>
+
           )}
 
           {/* =================================================
@@ -1567,6 +2457,7 @@ function App() {
               <span>🤖</span>
 
               <div>
+
                 <h2>
                   DeepSeek AI 智能分析
                 </h2>
@@ -1574,6 +2465,7 @@ function App() {
                 <p>
                   基于数据、统计结果和机器学习模型自动生成
                 </p>
+
               </div>
 
             </div>
@@ -1589,6 +2481,7 @@ function App() {
           </section>
 
         </main>
+
       )}
 
       {/* =====================================================
