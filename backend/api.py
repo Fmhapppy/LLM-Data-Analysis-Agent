@@ -20,6 +20,13 @@ from ml_model import train_regression_model
 from visualizations import generate_visualizations
 from llm_analyzer import generate_ai_analysis
 from analysis_agent import create_analysis_agent
+
+from agent_evaluation import (
+    build_evaluation_questions,
+    evaluate_agent_response,
+    summarize_evaluation,
+)
+
 from pdf_report import generate_pdf_report
 
 
@@ -135,6 +142,7 @@ async def inspect_file(
             ".xls",
         )
     ):
+
         raise HTTPException(
             status_code=400,
             detail=(
@@ -275,6 +283,7 @@ async def inspect_file(
         }
 
     except HTTPException:
+
         raise
 
     except Exception as e:
@@ -365,7 +374,7 @@ async def analyze(
         # =================================================
 
         print(
-            "\n[1/9] 正在读取数据..."
+            "\n[1/10] 正在读取数据..."
         )
 
         df = load_data(
@@ -393,7 +402,7 @@ async def analyze(
         # =================================================
 
         print(
-            "\n[2/9] 检查预测目标..."
+            "\n[2/10] 检查预测目标..."
         )
 
         if target_column not in df.columns:
@@ -419,7 +428,7 @@ async def analyze(
         # =================================================
 
         print(
-            "\n[3/9] 正在进行数据清洗..."
+            "\n[3/10] 正在进行数据清洗..."
         )
 
         (
@@ -456,7 +465,7 @@ async def analyze(
         # =================================================
 
         print(
-            "\n[4/9] 正在进行 EDA..."
+            "\n[4/10] 正在进行 EDA..."
         )
 
         eda_result = perform_eda(
@@ -472,7 +481,7 @@ async def analyze(
         # =================================================
 
         print(
-            "\n[5/9] 正在训练机器学习模型..."
+            "\n[5/10] 正在训练机器学习模型..."
         )
 
         ml_result = (
@@ -496,12 +505,26 @@ async def analyze(
             f"{ml_result.get('rmse', 0):.4f}"
         )
 
+        if ml_result.get("r2") is not None:
+
+            print(
+                f"R²: "
+                f"{ml_result.get('r2', 0):.4f}"
+            )
+
+        if ml_result.get("best_model"):
+
+            print(
+                f"最佳模型："
+                f"{ml_result.get('best_model')}"
+            )
+
         # =================================================
         # 7. Visualization
         # =================================================
 
         print(
-            "\n[6/9] 正在生成可视化..."
+            "\n[6/10] 正在生成可视化..."
         )
 
         visualization_result = (
@@ -525,7 +548,7 @@ async def analyze(
         # =================================================
 
         print(
-            "\n[7/9] 正在生成 AI 分析报告..."
+            "\n[7/10] 正在生成 AI 分析报告..."
         )
 
         data_info = {
@@ -575,7 +598,7 @@ async def analyze(
         # =================================================
 
         print(
-            "\n[8/9] 正在启动 Analysis Agent..."
+            "\n[8/10] 正在启动 Analysis Agent..."
         )
 
         print(
@@ -624,11 +647,167 @@ async def analyze(
         )
 
         # =================================================
-        # 9. 生成 PDF
+        # 8.6 Agent Evaluation
         # =================================================
 
         print(
-            "\n[9/9] 正在生成 PDF 报告..."
+            "\n[9/10] 正在进行 Agent Evaluation..."
+        )
+
+        # -------------------------------------------------
+        # 构建 Evaluation 测试题
+        # -------------------------------------------------
+
+        evaluation_input = {
+
+            "machine_learning": (
+                ml_result
+            ),
+
+            "eda": (
+                eda_result
+            ),
+
+            "cleaning_report": (
+                cleaning_report
+            ),
+
+            "target_column": (
+                target_column
+            ),
+
+            "sample_count": (
+                len(cleaned_df)
+            ),
+        }
+
+        evaluation_questions = (
+            build_evaluation_questions(
+                evaluation_input
+            )
+        )
+
+        print(
+            f"Evaluation 测试题数量："
+            f"{len(evaluation_questions)}"
+        )
+
+        # -------------------------------------------------
+        # 将 Agent 输出转换成文本
+        # -------------------------------------------------
+
+        agent_answer_text = str(
+            analysis_agent_result
+        )
+
+        # -------------------------------------------------
+        # 逐题进行 Evaluation
+        # -------------------------------------------------
+
+        evaluation_results = []
+
+        for question in evaluation_questions:
+
+            evaluation_result = (
+                evaluate_agent_response(
+                    question,
+                    agent_answer_text,
+                )
+            )
+
+            evaluation_results.append(
+                evaluation_result
+            )
+
+        # -------------------------------------------------
+        # 汇总 Evaluation 指标
+        # -------------------------------------------------
+
+        evaluation_summary = (
+            summarize_evaluation(
+                evaluation_results
+            )
+        )
+
+        # -------------------------------------------------
+        # 打印 Evaluation Summary
+        # -------------------------------------------------
+
+        print(
+            "----------------------------------------"
+        )
+
+        print(
+            "Agent Evaluation Results"
+        )
+
+        print(
+            "----------------------------------------"
+        )
+
+        print(
+            f"总体准确率："
+            f"{evaluation_summary['overall_accuracy']}%"
+        )
+
+        print(
+            f"事实准确率："
+            f"{evaluation_summary['fact_accuracy']}%"
+        )
+
+        print(
+            f"数值准确率："
+            f"{evaluation_summary['numerical_accuracy']}%"
+        )
+
+        print(
+            f"因果推理准确率："
+            f"{evaluation_summary['causal_reasoning_accuracy']}%"
+        )
+
+        print(
+            f"潜在幻觉率："
+            f"{evaluation_summary['hallucination_rate']}%"
+        )
+
+        print(
+            f"正确题数："
+            f"{evaluation_summary['correct_questions']}/"
+            f"{evaluation_summary['total_questions']}"
+        )
+
+        print(
+            "----------------------------------------"
+        )
+
+        # -------------------------------------------------
+        # 打印每道题
+        # -------------------------------------------------
+
+        for item in evaluation_results:
+
+            status = (
+                "✓"
+                if item.get("correct")
+                else "✗"
+            )
+
+            print(
+                f"[{status}] "
+                f"Q{item.get('question_id')}: "
+                f"{item.get('question')}"
+            )
+
+        print(
+            "----------------------------------------"
+        )
+
+        # =================================================
+        # 10. 生成 PDF
+        # =================================================
+
+        print(
+            "\n[10/10] 正在生成 PDF 报告..."
         )
 
         # -------------------------------------------------
@@ -878,6 +1057,29 @@ async def analyze(
             ),
 
             # -------------------------------------------------
+            # Agent Evaluation
+            # -------------------------------------------------
+
+            "agent_evaluation": {
+
+                "total_questions": (
+                    len(evaluation_questions)
+                ),
+
+                "questions": (
+                    evaluation_questions
+                ),
+
+                "results": (
+                    evaluation_results
+                ),
+
+                "summary": (
+                    evaluation_summary
+                ),
+            },
+
+            # -------------------------------------------------
             # PDF
             # -------------------------------------------------
 
@@ -922,6 +1124,16 @@ async def analyze(
 
         print(
             "Analysis Agent：完成"
+        )
+
+        print(
+            f"Agent Evaluation："
+            f"{len(evaluation_questions)} 道题"
+        )
+
+        print(
+            f"Evaluation Accuracy："
+            f"{evaluation_summary['overall_accuracy']}%"
         )
 
         print(
